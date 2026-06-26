@@ -121,24 +121,13 @@ export default class FloofMap {
     scoreCells() {
         let maxScore = 0;
 
-        const neighbors = (x, y) => {
+        function neighbors(x, y) {
             const n = [];
 
-            if (x > 0) {
-                n.push(this.cells[y][x - 1]);
-            }
-
-            if (x < this.width - 1) {
-                n.push(this.cells[y][x + 1]);
-            }
-
-            if (y > 0) {
-                n.push(this.cells[y - 1][x]);
-            }
-
-            if (y < this.height - 1) {
-                n.push(this.cells[y + 1][x]);
-            }
+            if (x > 0) n.push(this.cells[y][x - 1]);
+            if (x < this.width - 1) n.push(this.cells[y][x + 1]);
+            if (y > 0) n.push(this.cells[y - 1][x]);
+            if (y < this.height - 1) n.push(this.cells[y + 1][x]);
 
             return n;
         }
@@ -148,9 +137,7 @@ export default class FloofMap {
 
         outer: for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
-                const cell = this.cells[y][x];
-
-                if (cell.type === 1) {
+                if (this.cells[y][x].type === 1) {
                     spawnX = x;
                     spawnY = y;
                     break outer;
@@ -163,40 +150,41 @@ export default class FloofMap {
             throw new Error("Map does not contain a spawn point.");
         }
 
-        const knownPositions = new Set();
-        const pathfinder = new Pathfinder(this);
+        // BFS for all distances
+        const distances = new Array(this.height).fill().map(() => new Array(this.width).fill(Infinity));
+        distances[spawnY][spawnX] = 0;
+        const queue = [[spawnX, spawnY]];
+        const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
-        const scoreCell = (x, y) => {
+        while (queue.length) {
+            const [x, y] = queue.shift();
             const cell = this.cells[y][x];
-            const position = `${x},${y}`;
+            if (cell.type === 0) continue;
 
-            if (knownPositions.has(position)) {
-                return;
-            }
-
-            knownPositions.add(position);
-
-            if (cell.type === 0) {
-                return;
-            }
-
-            if (cell.type === 2 || cell.type === 3) {
-                cell.score = pathfinder.findPath(spawnX, spawnY, x, y).length;
-                maxScore = Math.max(maxScore, cell.score);
-            }
-
-            for (const neighbor of neighbors(x, y)) {
-                scoreCell(neighbor.x, neighbor.y);
+            for (const [dx, dy] of directions) {
+                const nx = x + dx, ny = y + dy;
+                if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height && distances[ny][nx] === Infinity) {
+                    const neighbor = this.cells[ny][nx];
+                    if (neighbor.type !== 0) {
+                        distances[ny][nx] = distances[y][x] + 1;
+                        if (neighbor.type === 2 || neighbor.type === 3) {
+                        neighbor.score = distances[ny][nx];
+                        maxScore = Math.max(maxScore, neighbor.score);
+                        }
+                        queue.push([nx, ny]);
+                    }
+                }
             }
         }
 
-        scoreCell(spawnX, spawnY);
-
+        // Normalize scores
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
-                this.cells[y][x].score /= maxScore;
+                if (this.cells[y][x].score > 0) {
+                this.cells[y][x].score /= maxScore || 1; // Avoid division by zero
+                }
             }
-        }
+        }   
     }
 
     static deserialize(inputJSON) {

@@ -50,7 +50,7 @@ export class PetalTier {
         this.count = 1;
         this.clumps = false;
         this.damageReduction = 0;
-        this.damageReflection = 0;
+        this.damageReflection = null;
         this.speedMultiplier = 1;
         this.extraSize = 0;
         this.extraRange = 0;
@@ -73,7 +73,7 @@ export class PetalTier {
 
         this.density = 1;
 
-        this.deathDefying = 0;
+        this.deathDefying = null;
 
         /** @type {{maxDamage: number, period: number}|null} */
         this.absorbsDamage = null;
@@ -84,13 +84,19 @@ export class PetalTier {
         this.boost = null;
 
         this.healBack = 0;
+
+        this.armor = 0;
+
+        this.icon = null;
+
+        this.description = "Not much is known about this mysterious petal.";
     }
 }
 
 export class MobTier {
     static HEALTH_SCALE = 3.15;
     static DAMAGE_SCALE = 3;
-    static SIZE_SCALE = 1.275;
+    static SIZE_SCALE = 1.235;
 
     constructor(tier, health, damage, size) {
         this.health = health * Math.pow(MobTier.HEALTH_SCALE, tier);
@@ -173,8 +179,6 @@ export class PetalConfig {
         this.huddles = false;
         this.ignoreWalls = false;
         this.extraLighting = 0;
-
-        this.description = "Not much is known about this mysterious petal.";
     }
 
     setName(name) {
@@ -215,10 +219,15 @@ export class PetalConfig {
         return this;
     }
 
-    setMulti(count, clumps) {
+    setMulti(count, clumps, splitDamage = false) {
         for (let i = 0; i < this.tiers.length; i++) {
-            this.tiers[i].count = count instanceof Array ? (count[i] ?? count[count.length - 1]) : count;
+            let x = count instanceof Array ? (count[i] ?? count[count.length - 1]) : count;
+            this.tiers[i].count = x;
             this.tiers[i].clumps = Boolean(clumps);
+            if (splitDamage) {
+                this.damage /= x;
+                this.tiers[i].damage /= x
+            }
         }
 
         return this;
@@ -290,7 +299,10 @@ export class PetalConfig {
     }
 
     setDescription(description) {
-        this.description = description;
+        for (let i = 0; i < this.tiers.length; i++) {
+            this.tiers[i].description = description instanceof Array ? (description[i] ?? description[description.length - 1]) : description;
+        }
+
         return this;
     }
 
@@ -325,7 +337,7 @@ export class PetalConfig {
     setPoison(poisonDamage, duration) {
         for (let i = 0; i < this.tiers.length; i++) {
             this.tiers[i].poison = {
-                damage: (poisonDamage / 22.5) * Math.pow(PetalTier.DAMAGE_SCALE, i),
+                damage: poisonDamage * Math.pow(PetalTier.DAMAGE_SCALE, i) / 22.5,
                 duration: duration * 22.5
             };
         }
@@ -365,7 +377,7 @@ export class PetalConfig {
 
     setExtraVision(extraVision) {
         for (let i = 0; i < this.tiers.length; i++) {
-            this.tiers[i].extraVision = extraVision * Math.pow(1.5, i);
+            this.tiers[i].extraVision = extraVision * Math.pow(1.45, i);
         }
 
         return this;
@@ -432,9 +444,12 @@ export class PetalConfig {
         return this;
     }
 
-    setDamageReflection(damageReflection) {
+    setDamageReflection(damageReflection, cap = 0) {
         for (let i = 0; i < this.tiers.length; i++) {
-            this.tiers[i].damageReflection = damageReflection * Math.pow(4 / 3, i);
+            this.tiers[i].damageReflection = {
+                reflection: damageReflection * Math.pow(4 / 3, i),
+                cap: cap * Math.pow(1.05, i)
+            };
         }
 
         return this;
@@ -453,9 +468,12 @@ export class PetalConfig {
         return this;
     }
 
-    setDeathDefying(healthRegain) {
+    setDeathDefying(healthRegain, durationScale) {
         for (let i = 0; i < this.tiers.length; i++) {
-            this.tiers[i].deathDefying = healthRegain * Math.pow(1.1883, i);
+            this.tiers[i].deathDefying = {
+                health: Math.min(1, healthRegain * Math.pow(1.1883, i)),
+                duration: 1.5 + i * durationScale
+            };
         }
 
         return this;
@@ -533,6 +551,27 @@ export class PetalConfig {
         }
         return this;
     }
+    setArmor(armor) {
+        for (let i = 0; i < this.tiers.length; i++) {
+            this.tiers[i].armor = armor * Math.pow(PetalTier.DAMAGE_SCALE, i);
+        }
+
+        return this;
+    }
+    setIcon(size, count, name, rotation) {
+        for (let i = 0; i < this.tiers.length; i++) {
+            let c2 = count instanceof Array ? (count[i] ?? count[count.length - 1]) : count;
+
+            this.tiers[i].icon = {
+                size: size,
+                count: c2,
+                name: name,
+                rotation: rotation * Math.PI / 180
+            }
+        }
+
+        return this;
+    }
 }
 
 export class MobDrop {
@@ -567,7 +606,10 @@ export class MobConfig {
 
         this.spawnable = true;
         this.sandstormMovement = false;
-        this.damageReflection = 0;
+        this.damageReflection = {
+            reflection: 0,
+            cap: 0
+        };
 
         this.tiers = this.#initTiers();
 
@@ -593,6 +635,8 @@ export class MobConfig {
             min: 1,
             max: 0,
         };
+
+        this.wavesIconSize = 3.5;
     }
 
     setSystem(isSystem) {
@@ -620,6 +664,21 @@ export class MobConfig {
         return this;
     }
 
+    setCentipedeMovement(centipedeMovement) {
+        this.centipedeMovement = Boolean(centipedeMovement);
+        return this;
+    }
+
+    setBumblebeeMovement(bumblebeeMovement) {
+        this.bumblebeeMovement = Boolean(bumblebeeMovement);
+        return this;
+    }
+
+    setDesertCentipedeMovement(desertCentipedeMovement) {
+        this.desertCentipedeMovement = Boolean(desertCentipedeMovement);
+        return this;
+    }
+
     setDamageReduction(damageReduction) {
         for (let i = 0; i < this.tiers.length; i++) {
             this.tiers[i].damageReduction = damageReduction * Math.pow(1.1, i);
@@ -628,8 +687,19 @@ export class MobConfig {
         return this;
     }
 
-    setDamageReflection(damageReflection) {
-        this.damageReflection = damageReflection;
+    setDamageReflection(damageReflection, cap = 0) {
+        this.damageReflection = {
+            reflection: damageReflection,
+            cap: cap
+        };
+
+        return this;
+    }
+
+    setArmor(armor) {
+        for (let i = 0; i < this.tiers.length; i++) {
+            this.tiers[i].armor = armor * Math.pow(PetalTier.DAMAGE_SCALE, i);
+        }
 
         return this;
     }
@@ -637,11 +707,12 @@ export class MobConfig {
     /** @param {{aimbot: boolean, petalIndex: number, cooldown: number, health: number, damage: number, speed: number, range: number, size: number, multiShot: {count:number,delay:number,spread:number}|null, runs: boolean, nullCollision: boolean}} projectile */
     setProjectile(projectile = {}) {
         for (let i = 0; i < this.tiers.length; i++) {
+        
             this.tiers[i].projectile = {
                 petalIndex: projectile.petalIndex ?? 0,
                 cooldown: projectile.cooldown ?? 10,
-                health: (projectile.health ?? 1) * Math.pow(MobTier.HEALTH_SCALE, i),
-                damage: (projectile.damage ?? 1) * Math.pow(MobTier.DAMAGE_SCALE, i),
+                health: (projectile.health ?? 1) * Math.pow(PetalTier.HEALTH_SCALE, i),
+                damage: (projectile.damage ?? 1) * Math.pow(PetalTier.DAMAGE_SCALE, i),
                 speed: projectile.speed ?? 5,
                 range: (projectile.range ?? 50) * Math.pow(MobTier.SIZE_SCALE * .8, i),
                 size: projectile.size ?? .35,
@@ -672,7 +743,7 @@ export class MobConfig {
     setPoison(poisonDamage, duration) {
         for (let i = 0; i < this.tiers.length; i++) {
             this.tiers[i].poison = {
-                damage: (poisonDamage / 22.5) * Math.pow(PetalTier.DAMAGE_SCALE, i),
+                damage: poisonDamage * Math.pow(PetalTier.DAMAGE_SCALE, i) / 22.5,
                 duration: duration * 22.5
             };
         }
@@ -703,6 +774,15 @@ export class MobConfig {
             max: maxRand
         }
 
+        return this;
+    }
+
+    setDrawing(customDrawing) {
+        if (!(customDrawing instanceof Drawing)) {
+            throw new Error("Invalid drawing type");
+        }
+
+        this.drawing = customDrawing;
         return this;
     }
 
@@ -801,6 +881,11 @@ export class MobConfig {
         }
         return this;
     }
+
+    setWavesIconSize(wavesIconSize) {
+        this.wavesIconSize = wavesIconSize;
+        return this;
+    }
 }
 
 export const CLIENT_BOUND = {
@@ -824,7 +909,8 @@ export const SERVER_BOUND = {
     CHANGE_LOADOUT: 0x03,
     DEV_CHEAT: 0x04,
     PING: 0x05,
-    CHAT_MESSAGE: 0x06
+    CHAT_MESSAGE: 0x06,
+    INVENTORY_CHANGE_LOADOUT: 0x07
 };
 
 export const DEV_CHEAT_IDS = {
@@ -956,15 +1042,19 @@ export class Drawing {
         closePath: [6],
         moveTo: [7, "x", "y"],
         lineTo: [8, "x", "y"],
-        stroke: [9, "color", "lineWidth"],
+        stroke: [9, "color", "lineWidth", "strokeDarkness"],
         fill: [10, "color"],
-        paint: [11, "color", "lineWidth"],
+        paint: [11, "color", "lineWidth", "strokeDarkness"],
         polygon: [12, "sides", "radius", "rotation"],
         spikeBall: [13, "sides", "radius", "rotation"],
-        dipPolygon: [14, "sides", "radius", "dipMult"],
+        dipPolygon: [14, "sides", "radius", "dipMult", "rotation"],
         opacity: [15, "opacity"],
         blur: [16, "color", "strength"],
         noBlur: [17],
+        ellipse: [18, "x", "y", "radiusX", "radiusY", "rotation"],
+        quadraticCurveTo: [19, "cx", "cy", "x", "y"],
+        bezierCurveTo: [20, "cx1", "cy1", "cx2", "cy2", "x", "y"],
+        rotate: [21, "degrees"],
     };
 
     static reverseActions = Object.fromEntries(Object.keys(Drawing.actions).map(key => [Drawing.actions[key][0], key]));
@@ -975,12 +1065,18 @@ export class Drawing {
             const [actionName, ...args] = action.split(",").map(arg => {
                 if (arg === "") return undefined;
                 if (arg[0] === "#") return arg;
-                return parseFloat(arg);
+    
+                if (typeof arg === "string" && (arg === "date" || arg.startsWith("date_"))) {
+                    return arg;
+                }
+    
+                const num = parseFloat(arg);
+                return isNaN(num) ? arg : num;
             });
-
+    
             return [actionName, ...args];
         });
-
+    
         return drawing;
     }
 
@@ -1163,7 +1259,7 @@ export class Writer {
 
 /** @param {PetalConfig} config */
 export function encodePetalConfig(config) {
-    const output = [config.id, config.name, config.description, config.cooldown, 0x00];
+    const output = [config.id, config.name, config.cooldown, 0x00];
 
     const flagsIndex = output.length - 1;
 
@@ -1171,7 +1267,7 @@ export function encodePetalConfig(config) {
         output[flagsIndex] |= 0x01;
     }
 
-    if (config.tiers[0].constantHeal > 0) {
+    if (config.tiers[0].constantHeal !== 0) {
         output[flagsIndex] |= 0x02;
     }
 
@@ -1179,7 +1275,7 @@ export function encodePetalConfig(config) {
         output[flagsIndex] |= 0x04;
     }
 
-    if (config.tiers[0].damageReduction > 0) {
+    if (config.tiers[0].damageReduction !== 0) {
         output[flagsIndex] |= 0x08;
     }
 
@@ -1191,7 +1287,7 @@ export function encodePetalConfig(config) {
         output[flagsIndex] |= 0x20;
     }
 
-    if (config.tiers[0].healing > 0) {
+    if (config.tiers[0].healing !== 0) {
         output[flagsIndex] |= 0x40;
     }
 
@@ -1211,7 +1307,7 @@ export function encodePetalConfig(config) {
         output[flagsIndex] |= 0x2000;
     }
 
-    if (config.tiers[0].extraVision > 0) {
+    if (config.tiers[0].extraVision > 0 || config.tiers[0].extraVision < 0) {
         output[flagsIndex] |= 0x4000;
     }
 
@@ -1231,7 +1327,7 @@ export function encodePetalConfig(config) {
         output[flagsIndex] |= 0x40000;
     }
 
-    if (config.tiers[0].damageReflection > 0) {
+    if (config.tiers[0].damageReflection !== null) {
         output[flagsIndex] |= 0x80000;
     }
 
@@ -1239,7 +1335,7 @@ export function encodePetalConfig(config) {
         output[flagsIndex] |= 0x100000;
     }
 
-    if (config.tiers[0].deathDefying > 0) {
+    if (config.tiers[0].deathDefying !== null) {
         output[flagsIndex] |= 0x200000;
     }
 
@@ -1255,7 +1351,7 @@ export function encodePetalConfig(config) {
         output[flagsIndex] |= 0x1000000;
     }
 
-    if (config.tiers[0].healBack > 0) {
+    if (config.tiers[0].healBack > 0 || config.tiers[0].healBack < 0) {
         output[flagsIndex] |= 0x4000000;
     }
 
@@ -1263,8 +1359,16 @@ export function encodePetalConfig(config) {
         output[flagsIndex] |= 0x8000000;
     }
 
+    if (config.tiers[0].armor !== 0) {
+        output[flagsIndex] |= 0x20000000;
+    }
+
+    if (config.tiers[0].icon !== null) {
+        output[flagsIndex] |= 0x80000000;
+    }
+
     output.push(...config.tiers.flatMap((tier, tierID) => {
-        const tierOutput = [tier.health, tier.damage];
+        const tierOutput = [tier.health, tier.damage, tier.description];
 
         if (output[flagsIndex] & 0x01) {
             tierOutput.push(tier.extraHealth);
@@ -1299,7 +1403,7 @@ export function encodePetalConfig(config) {
         }
 
         if (output[flagsIndex] & 0x400) {
-            tierOutput.push(tier.poison.damage, tier.poison.duration);
+            tierOutput.push(tier.poison.damage, tier.poison.duration / 22.5);
         }
 
         if (output[flagsIndex] & 0x800) {
@@ -1339,7 +1443,7 @@ export function encodePetalConfig(config) {
         }
 
         if (output[flagsIndex] & 0x80000) {
-            tierOutput.push(tier.damageReflection);
+            tierOutput.push(tier.damageReflection.reflection, tier.damageReflection.cap);
         }
 
         if (output[flagsIndex] & 0x100000) {
@@ -1347,7 +1451,7 @@ export function encodePetalConfig(config) {
         }
 
         if (output[flagsIndex] & 0x200000) {
-            tierOutput.push(tier.deathDefying);
+            tierOutput.push(tier.deathDefying.health, tier.deathDefying.duration);
         }
 
         if (output[flagsIndex] & 0x400000) {
@@ -1364,6 +1468,14 @@ export function encodePetalConfig(config) {
 
         if (output[flagsIndex] & 0x4000000) {
             tierOutput.push(tier.healBack);
+        }
+
+        if (output[flagsIndex] & 0x20000000) {
+            tierOutput.push(tier.armor);
+        }
+
+        if (output[flagsIndex] & 0x80000000) {
+            tierOutput.push(tier.icon.size, tier.icon.count, tier.icon.name, tier.icon.rotation);
         }
 
         return tierOutput;
@@ -1401,6 +1513,11 @@ export function encodePetalConfig(config) {
         );
     }
 
+    if (config.splits) {
+        output[flagsIndex] |= 0x40000000;
+        output.push(config.splits.count);
+    }
+
     return output.map(value => {
         if (Number.isFinite(value)) {
             return +value.toFixed(2);
@@ -1414,7 +1531,6 @@ export function decodePetalConfig(data, nTiers) {
     const output = {
         id: data.shift(),
         name: data.shift(),
-        description: data.shift(),
         cooldown: data.shift(),
         tiers: [],
         drawing: undefined,
@@ -1427,6 +1543,7 @@ export function decodePetalConfig(data, nTiers) {
         const tier = {
             health: data.shift(),
             damage: data.shift(),
+            description: data.shift(),
             extraHealth: 0,
             constantHeal: 0,
             healing: 0,
@@ -1435,8 +1552,9 @@ export function decodePetalConfig(data, nTiers) {
             speedMultiplier: 1,
             extraSize: 0,
             density: 1,
-            deathDefying: 0,
-            extraRadians: 0
+            extraRadians: 0,
+            armor: 0,
+            icon: null
         };
 
         if (flags & 0x01) {
@@ -1528,7 +1646,10 @@ export function decodePetalConfig(data, nTiers) {
         }
 
         if (flags & 0x80000) {
-            tier.damageReflection = data.shift();
+            tier.damageReflection = {
+                reflection: data.shift(),
+                cap: data.shift()
+            };
         }
 
         if (flags & 0x100000) {
@@ -1536,7 +1657,10 @@ export function decodePetalConfig(data, nTiers) {
         }
 
         if (flags & 0x200000) {
-            tier.deathDefying = data.shift();
+            tier.deathDefying = {
+                health: data.shift(),
+                duration: data.shift()
+            };
         }
 
         if (flags & 0x400000) {
@@ -1559,6 +1683,19 @@ export function decodePetalConfig(data, nTiers) {
 
         if (flags & 0x4000000) {
             tier.healBack = data.shift();
+        }
+
+        if (flags & 0x20000000) {
+            tier.armor = data.shift();
+        }
+
+        if (flags & 0x80000000) {
+            tier.icon = {
+                size: data.shift(),
+                count: data.shift(),
+                name: data.shift(),
+                rotation: data.shift()
+            };
         }
 
         output.tiers.push(tier);
@@ -1595,6 +1732,10 @@ export function decodePetalConfig(data, nTiers) {
         }
     }
 
+    if (flags & 0x40000000) {
+        output.splits = data.shift();
+    }
+
     return output;
 }
 
@@ -1622,15 +1763,171 @@ export function decodePetalConfigs(data, nTiers) {
 
 /** @param {MobConfig} config */
 function encodeMobConfig(config) {
-    return [config.id, config.name, +config.isSystem];
+    const output = [config.id, config.name, +config.isSystem, config.drops, 0x00];
+
+    const flagsIndex = output.length - 1;
+
+    if (config.tiers[0].damageReduction !== 0) {
+        output[flagsIndex] |= 0x01;
+    }
+
+    if (config.tiers[0].poison) {
+        output[flagsIndex] |= 0x02;
+    }
+
+    if (config.tiers[0].lightning) {
+        output[flagsIndex] |= 0x04;
+    }
+
+    if (config.damageReflection) {
+        output[flagsIndex] |= 0x08;
+    }
+
+    if (config.tiers[0].armor !== 0) {
+        output[flagsIndex] |= 0x10;
+    }
+
+    if (config.healing) {
+        output[flagsIndex] |= 0x20;
+    }
+
+    if (config.tiers[0].projectile) {
+        output[flagsIndex] |= 0x40;
+    }
+
+    if (config.wavesIconSize) {
+        output[flagsIndex] |= 0x100;
+    }
+
+    output.push(...config.tiers.flatMap((tier, tierID) => {
+        const tierOutput = [tier.health, tier.damage];
+
+        if (output[flagsIndex] & 0x01) {
+            tierOutput.push(tier.damageReduction);
+        }
+
+        if (output[flagsIndex] & 0x02) {
+            tierOutput.push(tier.poison.damage, tier.poison.duration / 22.5);
+        }
+
+        if (output[flagsIndex] & 0x04) {
+            tierOutput.push(tier.lightning.damage);
+        }
+
+        if (output[flagsIndex] & 0x10) {
+            tierOutput.push(tier.armor);
+        }
+
+        if (output[flagsIndex] & 0x40) {
+            tierOutput.push(tier.projectile.health, tier.projectile.damage, tier.projectile.petalIndex, tier.projectile.range);
+        }
+
+        return tierOutput;
+    }));
+
+    if (output[flagsIndex] & 0x08) {
+        output.push(config.damageReflection.reflection, config.damageReflection.cap);
+    }
+
+    if (output[flagsIndex] & 0x20) {
+        output.push(config.healing);
+    }
+
+    if (config.drawing?.toString().length > 0) {
+        output[flagsIndex] |= 0x80;
+        output.push(config.drawing.toString());
+    }
+
+    if (output[flagsIndex] & 0x100) {
+        output.push(config.wavesIconSize);
+    }
+
+    return output.map(value => {
+        if (Number.isFinite(value)) {
+            return +value.toFixed(2);
+        }
+
+        return value;
+    });
 }
 
-function decodeMobConfig(data) {
-    return {
+function decodeMobConfig(data, nTiers) {
+    const output = {
         id: data.shift(),
         name: data.shift(),
         hideUI: data.shift() === 1,
+        drops: data.shift(),
+        drawing: undefined,
+        tiers: [],
+        wavesIconSize: 3.5
     };
+
+    const flags = data.shift();
+
+    for (let i = 0; i < nTiers; i++) {
+        const tier = {
+            health: data.shift(),
+            damage: data.shift(),
+            healing: 0,
+            damageReduction: 0,
+            poison: null,
+            lightning: 0,
+            damageReflection: null,
+            armor: 0,
+            projectile: null
+        };
+
+        if (flags & 0x01) {
+            tier.damageReduction = data.shift();
+        }
+
+        if (flags & 0x02) {
+            tier.poison = {
+                damage: data.shift() * 22.5,
+                duration: data.shift()
+            };
+        }
+
+        if (flags & 0x04) {
+            tier.lightning = data.shift();
+        }
+
+        if (flags & 0x10) {
+            tier.armor = data.shift();
+        }
+
+        if (flags & 0x40) {
+            tier.projectile = {
+                health: data.shift(),
+                damage: data.shift(),
+                index: data.shift(),
+                range: data.shift()
+            };
+        }
+
+        output.tiers.push(tier);
+    }
+
+    if (flags & 0x08) {
+        output.damageReflection = {
+            reflection: data.shift(),
+            cap: data.shift()
+        };
+    }
+
+    if (flags & 0x20) {
+        output.healing = data.shift();
+    }
+
+    if (flags & 0x80) {
+        output.drawing = Drawing.fromString(data.shift());
+    }
+
+    if (flags & 0x100) {
+        output.wavesIconSize = data.shift();
+    }
+
+    return output;
 }
 
 function encodeMobConfigs(configs) {
@@ -1644,12 +1941,12 @@ function encodeMobConfigs(configs) {
     return output;
 }
 
-function decodeMobConfigs(data) {
+export function decodeMobConfigs(data, nTiers) {
     const configs = [];
     const nMobs = data.shift();
 
     for (let i = 0; i < nMobs; i++) {
-        configs.push(decodeMobConfig(data));
+        configs.push(decodeMobConfig(data, nTiers));
     }
 
     return configs;
@@ -1675,7 +1972,7 @@ export function decodeEverything(data) {
     }
 
     const petals = decodePetalConfigs(data, nTiers);
-    const mobs = decodeMobConfigs(data);
+    const mobs = decodeMobConfigs(data, nTiers);
 
     return {
         tiers: tiers,

@@ -5,9 +5,10 @@
     <meta charset="UTF-8">
     <title>floof</title>
     <link rel="icon" href="./assets/favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@700&display=swap" rel="stylesheet">
     <style>
         * {
-            font-family: sans-serif;
+            font-family: 'Ubuntu', sans-serif;
             font-weight: bold;
             transition: all .25s ease-in-out;
 
@@ -150,40 +151,50 @@
         }
 
         label {
-            margin: 1vmin 0;
+            margin: 8px 0;
             color: white;
             vertical-align: middle;
         }
 
         input[type=checkbox] {
-            width: 2vmin;
-            height: 2vmin;
+            width: 10px;
+            height: 10px;
             accent-color: rgba(85, 200, 119, 1);
             color: white;
             vertical-align: middle;
         }
 
         #menuContainer {
-            position: absolute;
-            top: 1.5vmin;
-            left: -65vmin;
+            position: fixed;
+            top: 5px;
+            left: 5px;
         }
 
         #menuContainer.active {
-            left: 1.5vmin;
+            left: 5px;
+        }
+
+        #buttonsContainer {
+            position: fixed;
+            bottom: 5px;
+            left: 5px;
+        }
+
+        #buttonsContainer.active {
+            left: 5px;
         }
 
         #topButtons {
             background-color: rgba(0, 0, 0, .15);
-            border-radius: 1vmin;
-            padding: 1.5vmin;
+            border-radius: 5px;
+            padding: 5px;
         }
 
         #topButtons button {
-            border-radius: .5vmin;
-            width: 5vmin;
-            height: 5vmin;
-            border: .5vmin solid black;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 4px solid black;
         }
 
         #topButtons button img {
@@ -201,31 +212,62 @@
         }
 
         #topButtons button img.alert {
-            width: 3vmin;
-            height: 3vmin;
+            width: 20px;
+            height: 20px;
+        }
+
+        #bottomButtons {
+            background-color: rgba(0, 0, 0, .15);
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        #bottomButtons button {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 4px solid black;
+        }
+
+        #bottomButtons button:hover {
+            filter: brightness(.9);
+        }
+
+        #bottomButtons button:active {
+            filter: brightness(.8);
+        }
+
+        #bottomButtons button img.alert {
+            width: 20px;
+            height: 20px;
         }
 
         #menus .menu {
-            position: absolute;
-            top: 0vmin;
-            left: -150vmin;
-            border-radius: .5vmin;
-            width: 32vmin;
-            height: 32vmin;
-            border: .5vmin solid black;
+            position: fixed;
+            top: 60px;
+            left: -700px;
+            border-radius: 5px;
+            width: 300px;
+            height: 380px;
+            border: 5px solid black;
             overflow-y: auto;
-            padding: 1vmin;
-            font-size: 1.65vmin;
+            padding: 10px;
+            font-size: 15px;
+            scrollbar-width: none;
+        }
+        
+        #menus .menu::-webkit-scrollbar {
+            display: none;
         }
 
         #menus .menu.active {
-            left: 0vmin;
-            top: 9vmin;
+            left: 5px;
+            top: 60px;
         }
 
         #menus .menu h2 {
             margin-top: 0;
-            font-size: 3vmin;
+            font-size: 25px;
         }
 
         #menus .menu label {
@@ -234,30 +276,19 @@
         }
 
         #menus .menu input[type=checkbox] {
-            width: 3vmin;
-            height: 3vmin;
+            width: 20px;
+            height: 20px;
             vertical-align: middle;
             accent-color: #EFEFEF;
         }
 
-        #closeButton.inactive {
-            position: absolute;
-            top: -100vmin;
-        }
-
-        #closeButton {
-            position: absolute;
-            left: 25.5vmin;
-            top: 1.5vmin;
-        }
-
         #menus .menu button {
             width: 100%;
-            padding: 1vmin;
+            padding: 10px;
             background-color: #88C8BA;
-            border-radius: .5vmin;
-            border: .5vmin solid #6CA094;
-            margin-top: 1vmin;
+            border-radius: 10px;
+            border: 10px solid #6CA094;
+            margin-top: 10px;
         }
 
         #menus .menu button:hover {
@@ -266,6 +297,81 @@
 
         #menus .menu button:active {
             filter: brightness(.8);
+        }
+
+        #menus2 .menu {
+            position: fixed;
+            bottom: -500px;
+            left: 60px;
+            border-radius: 5px;
+            width: 300px;
+            height: 350px;
+            border: 4px solid black;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 15px;
+            scrollbar-width: none;
+        }
+        
+        #menus2 .menu::-webkit-scrollbar {
+            display: none;
+        }
+
+        #menus2 .menu.active {
+            left: 60px;
+            bottom: 5px;
+        }
+
+        #menus2 .menu h2 {
+            margin-top: 0;
+            font-size: 3vmin;
+        }
+
+        #menus2 .menu label {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        #menus2 .menu input[type=checkbox] {
+            width: 10px;
+            height: 10px;
+            vertical-align: middle;
+            accent-color: #EFEFEF;
+        }
+
+        #menus2 .menu button {
+            width: 100%;
+            padding: 1vmin;
+            background-color: #88C8BA;
+            border-radius: .5vmin;
+            border: .5vmin solid #6CA094;
+            margin-top: 1vmin;
+        }
+
+        #menus2 .menu button:hover {
+            filter: brightness(.9);
+        }
+
+        #menus2 .menu button:active {
+            filter: brightness(.8);
+        }
+
+        button {
+            outline: none;
+        }
+        button:focus {
+            outline: none;
+        }
+
+        #closeButton.inactive {
+            position: fixed;
+            top: -100px;
+        }
+
+        #closeButton {
+            position: fixed;
+            left: 192.5px;
+            top: 10px;
         }
 
         #accountTopPart {
@@ -317,11 +423,13 @@
 
         #chatInput {
             display: none;
-            position: absolute;
-            border-radius: .5vmin;
+            position: fixed;
+            bottom: 12px;
+            left: 60px;
+            border-radius: 5px;
             border: none;
-            background-color: rgba(0, 0, 0, .5);
-            color: white;
+            background-color: rgba(0, 0, 0, .4);
+            color: black;
             line-height: 1;
             padding: 0;
             margin: 0;
@@ -332,25 +440,29 @@
             outline: none;
         }
     </style>
-
-    <script src="./index.js" type="module" defer></script>
 </head>
+
+<script type="module">
+  document.addEventListener("DOMContentLoaded", () => {
+    const redirect = window.location.href;
+    document.getElementById("discordLoginBtn").href = `<%= DISCORD_OAUTH2_REDIRECT_URL %>&state=${encodeURIComponent(JSON.stringify({ redirect }))}`});
+</script>
 
 <body oncontextmenu="return false;">
     <canvas></canvas>
-
+    
     <div id="menuContainer">
         <div id="topButtons">
-            <button id="optionsMenu"></button>
-            <button id="accountMenu"></button>
-            <button id="changelogMenu" style="position:relative;"></button>
-            <button id="discordButton"></button>
+            <button id="optionsMenu" tabindex="-1"></button>
+            <button id="accountMenu" tabindex="-1"></button>
+            <button id="changelogMenu" tabindex="-1" style="position:relative;"></button>
+            <button id="discordButton" tabindex="-1"></button>
 
             <button id="closeButton" class="inactive"></button>
         </div>
 
         <div id="menus">
-            <div class="menu" id="optionsMenu" style="height:38vmin">
+            <div class="menu" id="optionsMenu" style="height:380px">
                 <h2>Options:</h2>
                 <label for="show-debug">Show Debug Info:</label>
                 <input type="checkbox" id="show-debug" name="show-debug" value="show-debug"><br />
@@ -359,8 +471,7 @@
                 <input type="checkbox" id="hide-grid" name="hide-grid" value="hide-grid"><br />
 
                 <label for="rigid-interpolation">Rigid Interpolation:</label>
-                <input type="checkbox" id="rigid-interpolation" name="rigid-interpolation"
-                    value="rigid-interpolation"><br />
+                <input type="checkbox" id="rigid-interpolation" name="rigid-interpolation" value="rigid-interpolation"><br />
 
                 <label for="mouse-movement">Mouse Movement:</label>
                 <input type="checkbox" id="mouse-movement" name="mouse-movement" value="mouse-movement"><br />
@@ -368,34 +479,64 @@
                 <label for="hide-entity-ui">Hide Entity UI:</label>
                 <input type="checkbox" id="hide-entity-ui" name="hide-entity-ui" value="hide-entity-ui"><br />
 
-                <label for="use-tile-background">Tiled Background:</label>
-                <input type="checkbox" id="use-tile-background" name="use-tile-background" value="use-tile-background">
+                <label for="disable-tiled-background">Disable Tiled Background:</label>
+                <input type="checkbox" id="disable-tiled-background" name="disable-tiled-background" value="disable-tiled-background"><br />
 
                 <label for="extra-graphics">Fancy Graphics:</label>
                 <input type="checkbox" id="extra-graphics" name="extra-graphics" value="extra-graphics"><br />
 
                 <label for="show-hitboxes">Show Hitboxes:</label>
-                <input type="checkbox" id="show-hitboxes" name="show-hitboxes" value="show-hitboxes">
-            </div>
-            <div class="menu" id="accountMenu" style="height:38vmin">
-                <!-- <div id="accountTopPart">
-                    <span style="font-size: 3vmin" id="accountUsernameDisplay">???</span>
+                <input type="checkbox" id="show-hitboxes" name="show-hitboxes" value="show-hitboxes"><br />
 
-                    <div id="accountDiscord"></div>
+                <label for="cache-mob-assets">Cache Mob Assets:</label>
+                <input type="checkbox" id="cache-mob-assets" name="cache-mob-assets" value="cache-mob-assets"><br />
+
+                <label for="cache-petal-assets">Cache Petal Assets:</label>
+                <input type="checkbox" id="cache-petal-assets" name="cache-petal-assets" value="cache-petal-assets"><br />
+            </div>
+
+            <div class="menu" id="accountMenu" style="height:38vmin">
+                <!-- Logged In -->
+                <div id="accountLoggedIn" style="display:none; padding:2vmin; text-align:center;">
+                    <img id="accountAvatar" src="" width="128" height="128"
+                        style="border-radius:50%; margin-bottom:1.5vmin; image-rendering: -webkit-optimize-contrast;">
+
+                    <div id="accountUsernameDisplay"
+                        style="font-size:3.2vmin; font-weight:bold; margin-bottom:2.5vmin; white-space:nowrap;">
+                        Loading...
+                    </div>
+
+                    <button id="logoutButton"
+                        style="background:#ed4245; color:white; border:none; padding:1.4vmin 4vmin; border-radius:2px solid #c13537; border-radius:1vmin; font-weight:bold; font-size:2.2vmin; cursor:pointer; width:80%;">
+                        Log Out
+                    </button>
                 </div>
 
-                <span id="accountCreatedAtDisplay">Account Age: ???</span><br />
-                <span id="accountCoinsDisplay">Coins: ???</span><br />
-                <span id="accountTotalDamageDisplay">Total Damage: ???</span><br />
-                <span id="accountKillsDisplay">Kills: ???</span><br />
-                <span id="accountDeathsDisplay">Deaths: ???</span><br />
-                <span id="accountPermissionsDisplay">Permissions: ???</span><br />
-                <button id="saveAccount">Save Account Data</button><br />
-                <button id="logoutButton">Log Out</button> -->
-                <span>Accounts are currently under construction</span>
+                <!-- Logged Out -->
+                <div id="accountLoggedOut" style="text-align:center; padding:4vmin 2vmin;">
+                    <div style="color:#888; margin-bottom:3vmin; font-size:2.2vmin;">Sign in to save progress</div>
+                    <a href="<%= DISCORD_OAUTH2_REDIRECT_URL %>" id="discordLoginBtn"
+                        style="display:inline-flex; align-items:center; justify-content:center; gap:14px; padding:1.6vmin 4vmin; background:#5865F2; color:white; border-radius:1.2vmin; text-decoration:none; font-weight:bold; font-size:2.2vmin; box-shadow:0 6px 16px rgba(88,101,242,.4);">
+                        <img src="/assets/Discord-Symbol-Black.png" width="32" height="32"style="object-fit:contain;">
+                        <span>Log in with Discord</span>
+                    </a>
+                </div>
             </div>
+
             <div class="menu" id="changelogMenu" style="width: 42vmin;">
                 <h2>Changelogs:</h2>
+            </div>
+        </div>
+    </div>
+
+    <div id="buttonsContainer">
+        <div id="bottomButtons">
+            <button id="inventory" tabindex="-1"></button>
+        </div>
+
+        <div id="menus2">
+            <div class="menu" id="inventory">
+                <span>Your inventory is empty :(</span>
             </div>
         </div>
     </div>
@@ -417,6 +558,7 @@
             <option value="tdm">TDM</option>
             <option value="waves">Waves</option>
             <option value="line">Line</option>
+            <option value="maze">Maze</option>
         </select>
         <label for="biomeSelect">Biome</label>
         <select id="biomeSelect">
@@ -449,6 +591,55 @@
     </div>
 
     <input type="text" maxlength="128" id="chatInput" placeholder="Enter to chat; Esc to close"/>
+    <script type="module">
+        const AUTH_SERVER = "<%= AUTH_SERVER %>".replace(/\/+$/, "");
+
+        async function updateAccountMenu() {
+            const loggedIn = document.getElementById("accountLoggedIn");
+            const loggedOut = document.getElementById("accountLoggedOut");
+            const avatar = document.getElementById("accountAvatar");
+            const username = document.getElementById("accountUsernameDisplay");
+            const logoutBtn = document.getElementById("logoutButton");
+
+            try {
+                const res = await fetch(`${AUTH_SERVER}/api/me`, { credentials: "include" });
+                if (!res.ok) throw new Error();
+
+                const user = await res.json();
+                const name = user.global_name || user.username || "User";
+                const tag = user.discriminator === "0" ? "" : `#${user.discriminator}`;
+
+                username.textContent = `${name}${tag}`;
+
+                // GIF SUPPORT + FALLBACK
+                if (user.avatar?.startsWith("a_")) {
+                    avatar.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.gif?size=128`;
+                } else if (user.avatar) {
+                    avatar.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.webp?size=128`;
+                } else {
+                    avatar.src = `https://cdn.discordapp.com/embed/avatars/${(BigInt(user.id) >> 22n) % 6n}.png`;
+                }
+
+                loggedIn.style.display = "block";
+                loggedOut.style.display = "none";
+
+                logoutBtn.onclick = async () => {
+                    await fetch(`${AUTH_SERVER}/api/logout`, {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" }
+                    });
+                    location.reload();
+                };
+
+            } catch (e) {
+                loggedIn.style.display = "none";
+                loggedOut.style.display = "block";
+            }
+        }
+
+        updateAccountMenu();
+    </script>
 </body>
 
 </html>

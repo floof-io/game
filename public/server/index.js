@@ -4,7 +4,7 @@ import { DEFAULT_PETAL_COUNT, mobConfigs, PetalConfig, petalConfigs, tiers } fro
 import { AIPlayer, Mob, Player } from "./lib/Entity.js";
 import Router from "./lib/Router.js";
 import { stringToU8, u8ToString, u8ToU16 } from "../lib/lobbyProtocol.js";
-import { applyArticle, isHalloween } from "../lib/util.js";
+import { applyArticle, getWaveMobRarity, isHalloween } from "../lib/util.js";
 
 function createWave(n) {
     const output = [];
@@ -126,7 +126,7 @@ setInterval(() => {
         case GAMEMODES.FFA:
         case GAMEMODES.TDM: {
             const oldMapSize = state.width;
-            const newMapSize = 32 * 32 + 32 * 8 * (state.clients.size - 1);
+            const newMapSize = 1024 + 32 * 8 * (state.clients.size - 1);
 
             if (oldMapSize !== newMapSize) {
                 state.width = state.height = newMapSize;
@@ -136,10 +136,10 @@ setInterval(() => {
             }
         } break;
         case GAMEMODES.WAVES: {
-            if (state.isWaves && state.livingMobCount === 0) {
+            if (state.isWaves && state.livingMobCount <= 0) {
                 state.currentWave++;
                 state.maxMobs = Math.min(64, 6 + 2 * state.currentWave);
-                state.width = state.height = Math.min(32 * 32 + 32 * 2 * state.currentWave, Math.pow(128, 2));
+                state.width = state.height = Math.min(1024 + 36 * 2.25 * state.currentWave, Math.pow(128, 2));
 
                 state.clients.forEach(client => client.sendRoom());
                 const mobIndexes = createWave(state.maxMobs);
@@ -148,14 +148,15 @@ setInterval(() => {
                     if (mobIndexes[i] === -1) {
                         new AIPlayer(
                             state.random(),
-                            Math.max(0, Math.min(Math.min(11, Math.floor(Math.pow(state.currentWave, .475))) - (Math.random() * 3 | 0), 10)),
+                            Math.max(0, getWaveMobRarity(state.currentWave, 4.83 * Math.pow(1.012, state.currentWave), tiers.length - 1)),
                             state.currentWave
                         );
                         continue;
                     }
 
                     const mob = new Mob(state.random());
-                    mob.define(mobConfigs[mobIndexes[i]], Math.max(0, Math.min(Math.min(11, Math.floor(Math.pow(state.currentWave, .475))) - (Math.random() * 3 | 0), 10)));
+                    mob.define(mobConfigs[mobIndexes[i]], getWaveMobRarity(state.currentWave, 4.83 * Math.pow(1.012, state.currentWave), tiers.length - 1));
+                    state.aliveMobs.push(mob);
                 }
             }
         } break;
@@ -163,8 +164,8 @@ setInterval(() => {
             const oldW = state.width;
             const oldH = state.height;
 
-            state.width = 32 * 32 * 16;
-            state.height = 32 * 32 * 4;
+            state.width = 1024 * 16;
+            state.height = 1024 * 4;
             state.maxMobs = 10 + 2 * (state.clients.size - 1);
 
             if (oldW !== state.width || oldH !== state.height) {
@@ -177,21 +178,19 @@ setInterval(() => {
     }
 
     if (!state.isWaves && state.livingMobCount < state.maxMobs && Math.random() > .9) {
-        if (Math.random() > .999) {
+        /* if (Math.random() > .999) {
             const info = state.spawnNearPlayer(mobConfigs[0]);
             new AIPlayer(info.position, info.rarity, Math.max(1, info.rarity * 10 + (Math.random() * 6 | 0 - 3)));
-        } else if (state.gamemode === GAMEMODES.MAZE) {
+        } else  */if (state.gamemode === GAMEMODES.MAZE) {
             let cfg = mobConfigs[getMobIndex()];
             const info = state.spawnNearPlayer(cfg);
             if (info.tile?.spawn !== undefined) {
-                const spawner = state.mapData.mobSpawners.filter((spawner) => {
-                    if (spawner.id == info.tile?.spawn) return true
-                })[0]
-                if (spawner.availableMobs.length !== 0) {
+                const spawner = state.mapData.mobSpawners.find(spawner => {spawner.id == info.tile?.spawn} );
+                if (spawner && spawner.availableMobs.length) {
                     const spawn = spawner.availableMobs[spawner.availableMobs.length * Math.random() | 0]
                     cfg = mobConfigs[spawn[0]]
                     if (spawn[1] !== true) {
-                        info.rarity = spawn[1]
+                        info.rarity = Math.min(spawn[1], spawner.maxRarity);
                     }
                 }
             }
@@ -199,7 +198,8 @@ setInterval(() => {
             mob.define(cfg, info.rarity);
 
             if (info.rarity >= state.announceRarity && state.announceRarity > -1) {
-                state.clients.forEach(c => c.systemMessage(applyArticle(tiers[info.rarity].name, true) + " " + cfg.name + " has spawned!", tiers[info.rarity].color));
+                if (!tiers[info.rarity]) console.error(`Rarity returns undefined: ${info.rarity}`);
+                else state.clients.forEach(c => c.systemMessage(applyArticle(tiers[info.rarity].name, true) + " " + cfg.name + " has spawned!", tiers[info.rarity].color));
             }
         } else if (state.isLineMap) {
             const cfg = mobConfigs[getMobIndex()];
@@ -226,7 +226,7 @@ setInterval(() => {
 
     // CHANGE THIS
     if (!Router.isSandbox && ++k % 5 === 0) {
-        console.log("FPS:", state.lag.fps, "MSPT:", state.lag.mspt.toFixed(2));
+        // console.log("FPS:", state.lag.fps, "MSPT:", state.lag.mspt.toFixed(2));
     }
 }, 1000);
 
@@ -237,7 +237,7 @@ setInterval(() => {
 }, 256);
 
 // World update loop
-setInterval(() => state.clients.forEach(c => c.worldUpdate()), 1000 / 20);
+setInterval(() => state.clients.forEach(c => c.worldUpdate()), 1000 / 25);
 
 // Router server through worker through socket
 state.router = new Router();
@@ -257,10 +257,7 @@ switch (globalThis.environmentName) {
                     break;
                 case "start":
                     state.router.begin(data);
-
-                    if (data[2]) {
-                        new ModdingAPI();
-                    }
+                    if (data[2]) new ModdingAPI();
                     break;
             }
         }
@@ -273,15 +270,15 @@ switch (globalThis.environmentName) {
         if (Bun.env.ENV_DONE !== "true") {
             await Bun.write("./.env", [
                 "ENV_DONE=false",
-                "ROUTING_SERVER=wss://e2.server.eparker.dev",
+                "ROUTING_SERVER=https://routing.floof.supercord.lol",
                 "GAME_NAME=dedicated lobby",
                 "MODDED=false",
                 "GAMEMODE=maze",
                 `SECRET=${Array.from(crypto.getRandomValues(new Uint8Array(24))).map(e => e.toString(16).padStart(2, "0")).join("")}`,
                 "ADMIN_KEYS=devkey,devkey2",
                 "BIOME=0",
-                "HOST=10.8.33.2:8001",
-                "PORT=8001",
+                "HOST=dedicated.floof.supercord.lol",
+                "PORT=3005",
                 "TLS_DIRECTORY=false"
             ].join("\n"));
             console.warn("Please fill out the .env file with the correct values. Set ENV_DONE to 'true' when done.");
@@ -344,7 +341,7 @@ switch (globalThis.environmentName) {
 
             websocket: {
                 perMessageDeflate: true,
-
+                idleTimeout: 0,  // ← DISABLE IDLE TIMEOUT
                 async open(socket) {
                     socket.binaryType = "arraybuffer";
                     const client = state.router.addClient(socket.data.socketID, socket.data.searchParams.get("uuid"), keys.includes(socket.data.searchParams.get("clientKey")));
@@ -354,7 +351,7 @@ switch (globalThis.environmentName) {
 
                         let ct = (ipCounts.get(socket.data.ip) ?? 0) + 1;
 
-                        if (ct > 1) {
+                        if (ct > 100) {
                             client.kick("Too many connections from this IP");
                             return;
                         }
@@ -362,7 +359,7 @@ switch (globalThis.environmentName) {
                         ipCounts.set(socket.data.ip, ct);
 
                         try {
-                            const res = await fetch(`${Bun.env.ROUTING_SERVER.replace("ws", "http")}/uuid/check?uuid=${client.uuid}&trustedKey=${Bun.env.SECRET}`);
+                            const res = await fetch(`${Bun.env.ROUTING_SERVER}/uuid/check?uuid=${client.uuid}&trustedKey=${Bun.env.SECRET}`);
                             const data = await res.json();
 
                             if (!data.ok || !data.isValid) {
@@ -403,7 +400,7 @@ switch (globalThis.environmentName) {
                 }
             },
 
-            port: +Bun.env.PORT,
+            port: +Bun.env.DEDICATED_LOBBY_PORT,
             tls: Bun.env.TLS_DIRECTORY !== "false" ? {
                 key: Bun.file(`${Bun.env.TLS_DIRECTORY}/privkey.pem`),
                 cert: Bun.file(`${Bun.env.TLS_DIRECTORY}/fullchain.pem`)
@@ -412,8 +409,8 @@ switch (globalThis.environmentName) {
 
         const timezone = -Math.floor(new Date().getTimezoneOffset() / 60);
 
-        const lobbySocket = new WebSocket(`${Bun.env.ROUTING_SERVER}/ws/lobby?gameName=${Bun.env.GAME_NAME}&isModded=${Bun.env.MODDED == "true" ? "yes" : "no"}&gamemode=${Bun.env.GAMEMODE}&secretKey=${Bun.env.SECRET}&isPrivate=no&biome=${Bun.env.BIOME}&directConnect=${Bun.env.HOST},${timezone}&analytics=${ANALYTICS_DATA}`, {
-            origin: "https://floof.eparker.dev",
+        const lobbySocket = new WebSocket(`${Bun.env.ROUTING_SERVER.replace('http', 'ws')}/ws/lobby?gameName=${Bun.env.GAME_NAME}&isModded=${Bun.env.MODDED == "true" ? "yes" : "no"}&gamemode=${Bun.env.GAMEMODE}&secretKey=${Bun.env.SECRET}&isPrivate=no&biome=${Bun.env.BIOME}&directConnect=${Bun.env.HOST},${timezone}&analytics=${ANALYTICS_DATA}`, {
+            origin: Bun.env.HOST,
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
             }
@@ -468,7 +465,9 @@ switch (globalThis.environmentName) {
                 default:
                     if (lobbySocket.readyState === WebSocket.OPEN) {
                         lobbySocket.send(u8);
+                        console.log(`Lobby ready state: ${lobbySocket.readyState}`)
                     } else {
+                        console.log(`Lobby ready state: Closed.`)
                         wait.push(() => lobbySocket.send(u8));
                     }
                     break;
@@ -583,6 +582,10 @@ class ModdingAPI {
                         y: mob.y
                     }
                 });
+                if (state.isWaves) {
+                    state.aliveMobs.push(mob)
+                    state.maxMobs++
+                }
             } break;
             case "setRoomInfo":
                 if (args.length < 1 || args.length > 5) {

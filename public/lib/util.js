@@ -1,5 +1,4 @@
-export const SERVER_URL = location.protocol + "//" + ((location.hostname === "localhost" || location.hostname.startsWith("10.0.")) ? location.hostname + ":80" : "e2.server.eparker.dev");//"floof-router.glitch.me");
-
+export const SERVER_URL = process.env.ROUTING_SERVER;
 export function lerp(a, b, t) {
     return a + (b - a) * t;
 }
@@ -92,20 +91,42 @@ export const colors = {
     bookSpine: "#c28043",
     shrubGreen: "#0b7240",
     crabBodyOrange: "#dc704b",
-    crabLimbBrown: "#4d2621",
+    crabLimbBrown: "#4d2621"
 };
-
-export function formatLargeNumber(number) {
-    if (number < 1000) return number;
-    if (number < 1000000) return (number / 1000).toFixed(1) + "k";
-    if (number < 1000000000) return (number / 1000000).toFixed(1) + "m";
-    return (number / 1000000000).toFixed(1) + "b";
+export function formatLargeNumber(number, type = 0) {
+    let returnedNumber = number;
+    if (type === 1) {
+        if (number >= 1e15) {
+            returnedNumber = (number / 1e15).toFixed(1) + "q";
+        } else if (number >= 1e12) {
+            returnedNumber = (number / 1e12).toFixed(2) + "t";
+        } else if (number >= 1e9) {
+            returnedNumber = (number / 1e9).toFixed(2) + "b";
+        } else if (number >= 1e6) {
+            returnedNumber = (number / 1e6).toFixed(2) + "m";
+        } else if (number >= 1e3) {
+            returnedNumber = (number / 1e3).toFixed(1) + "k";
+        }
+    } else {
+        if (number >= 1e15) {
+            returnedNumber = (number / 1e15).toFixed(2) + "q";
+        } else if (number >= 1e12) {
+            returnedNumber = (number / 1e12).toFixed(2) + "t";
+        } else if (number >= 1e9) {
+            returnedNumber = (number / 1e9).toFixed(2) + "b";
+        } else if (number >= 1e6) {
+            returnedNumber = (number / 1e6).toFixed(2) + "m";
+        } else if (number >= 1e3) {
+            returnedNumber = (number / 1e3).toFixed(2) + "k";
+        }
+    }
+    return returnedNumber;
 }
 
 const threshold = .6375;
 
 export function getDropRarity(mobRarity, highestPlayerRarity) {
-    const maxRarity = Math.min(9, Math.min(mobRarity, highestPlayerRarity + 1));
+    const maxRarity = Math.min(11, Math.min(mobRarity, highestPlayerRarity + 1));
     const minRarity = Math.max(0, maxRarity - 2);
 
     if (minRarity > maxRarity) {
@@ -122,6 +143,35 @@ export function getDropRarity(mobRarity, highestPlayerRarity) {
     }
 
     return rarity;
+}
+
+export function getWaveMobRarity(wave, scaling, raritiesLength) {
+    let progress = (wave % scaling) / scaling
+    let baseMobRarity = Math.floor(wave / scaling)
+    let mobRarity = baseMobRarity
+
+    if (Math.random() < progress) {
+        mobRarity++
+    }
+
+    if (Math.random() < .082) {
+        mobRarity++
+        if (Math.random() < .023) {
+            mobRarity++
+        }
+    }
+
+    if (Math.random() < .091) {
+        mobRarity--
+    }
+    if (Math.random() < .074) {
+        mobRarity--
+    }
+    if (Math.random() < .025) {
+        mobRarity--
+    }
+    
+    return Math.min(raritiesLength, Math.max(0, mobRarity));
 }
 
 export function testCaseDrops(mobRarity, highestPlayerRarity, count) {
@@ -158,7 +208,8 @@ export const options = {
     hideEntityUI: false,
     useTileBackground: false,
     fancyGraphics: false,
-    showHitboxes: false
+    showHitboxes: false,
+    cacheMobAssets: false
 };
 
 export function applyArticle(word, capitalize = false) {
@@ -169,7 +220,34 @@ export function applyArticle(word, capitalize = false) {
     }
 }
 
-// Between Oct 31st and Nov 3rd
+export function applyPlural(word, capitalize = false) {
+    const rules = {
+        y: "ies",
+        h: "hes",
+        s: "ses",
+        x: "xes",
+        o: "oes"
+    };
+
+    for (const [ending, replacement] of Object.entries(rules)) {
+        if (word.endsWith(ending)) {
+            word = word.slice(0, -ending.length) + replacement;
+            break;
+        }
+    }
+
+    if (!Object.keys(rules).some(e => word.endsWith(rules[e]))) {
+        word += "s";
+    }
+
+    if (capitalize) {
+        word = word.charAt(0).toUpperCase() + word.slice(1);
+    }
+
+    return word;
+}
+
+// Between Oct 31st and Nov 7th
 export const isHalloween = (() => {
     const now = new Date();
     const month = now.getMonth() + 1;

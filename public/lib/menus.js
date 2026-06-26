@@ -1,12 +1,15 @@
 import { mixColors } from "./canvas.js";
-import { options } from "./util.js";
+import { options, colors } from "./util.js";
+import * as net from "./net.js";
 
 export function showMenu(menuID) {
     document.getElementById(menuID).classList.add("active");
 }
 
 const topButtons = document.getElementById("topButtons");
+const bottomButtons = document.getElementById("bottomButtons");
 const menuContainer = document.getElementById("menus");
+const buttonsContainer = document.getElementById("menus2");
 
 const menuColors = [
     "#C8C8C8",
@@ -16,6 +19,9 @@ const menuColors = [
     "#C88888"
 ];
 
+const buttonColors = [
+    colors.inventory
+];
 const closeButton = topButtons.querySelector("#closeButton");
 for (let i = 0; i < 5; i++) {
     const child = topButtons.children.item(i);
@@ -67,6 +73,37 @@ for (let i = 0; i < 5; i++) {
     }
 }
 
+for (let i = 0; i < 1; i++) {
+    const child = bottomButtons.children.item(i);
+
+    child.style.backgroundColor = colors.inventory;
+    child.style.borderColor = mixColors(colors.inventory, "#000000", .2);
+
+    child.style.left = "10px";
+    child.style.bottom = "10px";
+
+    const menu = buttonsContainer.children.item(i);
+    menu.style.backgroundColor = colors.inventory
+    menu.style.borderColor = mixColors(colors.inventory, "#000000", .2);
+
+    child.onclick = function () {
+        if (menu.classList.contains("active")) {
+            for (let j = 0; j < buttonsContainer.children.length; j++) {
+                buttonsContainer.children.item(j).classList.remove("active");
+            }
+            return;
+        }
+
+        for (let j = 0; j < buttonsContainer.children.length; j++) {
+            buttonsContainer.children.item(j).classList.remove("active");
+        }
+
+        net.state.inventory2 = undefined
+
+        menu.classList.toggle("active");
+    }
+}
+
 export function showMenus() {
     document.getElementById("menuContainer").classList.add("active");
 }
@@ -98,9 +135,11 @@ bindOptionToggle("hideGrid", "hide-grid");
 bindOptionToggle("rigidInterpolation", "rigid-interpolation");
 bindOptionToggle("mouseMovement", "mouse-movement");
 bindOptionToggle("hideEntityUI", "hide-entity-ui");
-bindOptionToggle("useTileBackground", "use-tile-background");
+bindOptionToggle("disableTiledBackground", "disable-tiled-background");
 bindOptionToggle("fancyGraphics", "extra-graphics");
 bindOptionToggle("showHitboxes", "show-hitboxes");
+bindOptionToggle("cacheMobAssets", "cache-mob-assets");
+bindOptionToggle("cachePetalAssets", "cache-petal-assets");
 
 export async function loadAndRenderChangelogs() {
     const changelogs = [];

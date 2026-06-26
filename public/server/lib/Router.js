@@ -52,26 +52,33 @@ function applyBiome(int) {
         [BIOME_TYPES.GARDEN]: createTable({
             [mobIDOf("Ladybug")]: 5,
             [mobIDOf("Bee")]: 5,
+            [mobIDOf("Bumblebee")]: 2,
             [mobIDOf("Rock")]: 4,
-            [mobIDOf("Hornet")]: 5,
-            [mobIDOf("Baby Ant")]: 4,
+            [mobIDOf("Hornet")]: 6,
+            [mobIDOf("Baby Ant")]: 3,
+            [mobIDOf("Ant Egg")]: 1,
             [mobIDOf("Worker Ant")]: 4,
             [mobIDOf("Soldier Ant")]: 5,
-            [mobIDOf("Spider")]: 5,
-            [mobIDOf("Pupa")]: 3,
+            [mobIDOf("Spider")]: 4,
             [mobIDOf("Leafbug")]: 3,
-            [mobIDOf("Mantis")]: 2,
             [mobIDOf("Centipede")]: 2,
-            [mobIDOf("Ant Hole")]: 1
+            [mobIDOf("Ant Hole")]: 1,
+            [mobIDOf("Dandelion")]: 2
         }),
         [BIOME_TYPES.DESERT]: createTable({
-            [mobIDOf("Beetle")]: 10,
-            [mobIDOf("Scorpion")]: 10,
-            [mobIDOf("Sandstorm")]: 9,
-            [mobIDOf("Cactus")]: 9,
-            [mobIDOf("Desert Centipede")]: 8,
-            [mobIDOf("Fire Ant Hole")]: 7,
-            [mobIDOf("Shiny Ladybug")]: 1
+            [mobIDOf("Shiny Ladybug")]: 1,
+            [mobIDOf("Sandstorm")]: 3,
+            [mobIDOf("Scorpion")]: 6,
+            [mobIDOf("Beetle")]: 6,
+            [mobIDOf("Fire Ant Egg")]: 1,
+            [mobIDOf("Baby Fire Ant")]: 2,
+            [mobIDOf("Worker Fire Ant")]: 3,
+            [mobIDOf("Soldier Fire Ant")]: 4,
+            [mobIDOf("Pupa")]: 3,
+            [mobIDOf("Moth")]: 3,
+            [mobIDOf("Desert Centipede")]: 3,
+            [mobIDOf("Fire Ant Hole")]: 1,
+            [mobIDOf("Cactus")]: 4
         }),
         [BIOME_TYPES.OCEAN]: createTable({
             [mobIDOf("Jellyfish")]: 5,
@@ -194,11 +201,7 @@ export default class Router {
 
     pipeMessage(numericID, dataView) {
         const client = state.clients.get(numericID);
-
-        if (!client) {
-            return;
-        }
-
+        if (!client) return;
         client.onMessage(new Reader(dataView, 0, true));
     }
 
@@ -229,20 +232,20 @@ export default class Router {
                 state.teamCount = 0;
                 state.announceRarity = 8;
 
-                setTimeout(() => {
-                    state.clients.forEach(c => c.systemMessage("Lobby will be closing in 5 minutes...", "#FF0000"));
+                // setTimeout(() => {
+                //     state.clients.forEach(c => c.systemMessage("Lobby will be closing in 5 minutes...", "#FF0000"));
 
-                    setTimeout(() => {
-                        state.clients.forEach(c => c.systemMessage("Lobby will be closing in 1 minute...", "#FF0000"));
+                //     setTimeout(() => {
+                //         state.clients.forEach(c => c.systemMessage("Lobby will be closing in 1 minute...", "#FF0000"));
 
-                        setTimeout(() => {
-                            state.clients.forEach(c => c.systemMessage("Lobby is closing...", "#FF0000"));
-                            state.clients.forEach(c => c.kick("Lobby Closed"));
+                //         setTimeout(() => {
+                //             state.clients.forEach(c => c.systemMessage("Lobby is closing...", "#FF0000"));
+                //             state.clients.forEach(c => c.kick("Lobby Closed"));
 
-                            setTimeout(() => process.exit(), 1E3);
-                        }, 60000);
-                    }, 240000);
-                }, 1000 * 60 * 60 * 8);
+                //             setTimeout(() => process.exit(), 1E3);
+                //         }, 60000);
+                //     }, 240000);
+                // }, 1000 * 60 * 60 * 8);
 
                 await initTerrain(state.biome);
                 break;

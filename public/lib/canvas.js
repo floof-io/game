@@ -56,11 +56,11 @@ export function mixColors(primary, secondary, amount = .5) {
     return hex;
 }
 
-export function text(text, x, y, size, fill = "#FFFFFF", _ctx = ctx) {
+export function text(text, x, y, size, fill = "#FFFFFF", _ctx = ctx, lineWidth = .2) {
     _ctx.fillStyle = fill;
-    _ctx.strokeStyle = mixColors(fill, "#000000", .3);
-    _ctx.lineWidth = size * .15;
-    _ctx.font = `bold ${size}px sans-serif`;
+    _ctx.strokeStyle = mixColors(fill, "#000000", .8);
+    _ctx.lineWidth = size * lineWidth;
+    _ctx.font = `bold ${size}px Ubuntu`;
 
     _ctx.strokeText(text, x, y);
     _ctx.fillText(text, x, y);
@@ -68,10 +68,10 @@ export function text(text, x, y, size, fill = "#FFFFFF", _ctx = ctx) {
     return _ctx.measureText(text).width;
 }
 
-export function setStyle(main, lineWidth = .1, strength = .2) {
-    ctx.fillStyle = main;
-    ctx.strokeStyle = mixColors(main, "#000000", strength);
-    ctx.lineWidth = lineWidth;
+export function setStyle(main, lineWidth = .1, strength = .2, _ctx = ctx) {
+    _ctx.fillStyle = main;
+    _ctx.strokeStyle = mixColors(main, "#000000", strength);
+    _ctx.lineWidth = lineWidth;
 }
 
 export function roundedRectangle(centerX, centerY, width, height, radius) {
@@ -113,20 +113,47 @@ function getTile(name) {
     return img;
 }
 
+const tileCacheMap = new Map();
+
 export function drawBackground(camX, camY, scale, doBorder = false, mapWidth, mapHeight, biomeInfo, isRadial = false) {
-    ctx.fillStyle = biomeInfo === null ? "rgba(200, 119, 85, 1)" : biomeInfo.color;
+    ctx.fillStyle = biomeInfo === null ? "rgba(200,119,85,1)" : biomeInfo.color;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (util.options.useTileBackground && biomeInfo !== null && biomeInfo.tile) {
+    if (!util.options.disableTiledBackground && biomeInfo !== null && biomeInfo.tile) {
         const tile = getTile(biomeInfo.tile);
 
         if (tile.ready) {
+            const cacheKey = `${biomeInfo.tile}_${scale}`;
+            let cache = tileCacheMap.get(cacheKey);
+
             const tileWidth = tile.width * scale;
             const tileHeight = tile.height * scale;
 
-            for (let i = (-camX % tileWidth) - tileWidth; i < canvas.width; i += tileWidth) {
-                for (let j = (-camY % tileHeight) - tileHeight; j < canvas.height; j += tileHeight) {
-                    ctx.drawImage(tile, i - 1, j - 1, tileWidth + 2, tileHeight + 2);
+            if (!cache) {
+                const offscreen = document.createElement("canvas");
+                offscreen.width = tileWidth * 3;
+                offscreen.height = tileHeight * 3;
+
+                const offctx = offscreen.getContext("2d");
+                for (let i = -tileWidth; i < offscreen.width + tileWidth; i += tileWidth) {
+                    for (let j = -tileHeight; j < offscreen.height + tileHeight; j += tileHeight) {
+                        offctx.drawImage(tile, i - 1, j - 1, tileWidth + 2, tileHeight + 2);
+                    }
+                }
+
+                cache = offscreen;
+                tileCacheMap.set(cacheKey, cache);
+            }
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            const startX = (-((camX % tileWidth) + tileWidth * 2)) + centerX % tileWidth;
+            const startY = (-((camY % tileHeight) + tileHeight * 2)) + centerY % tileHeight;
+
+            for (let i = startX; i < canvas.width + tileWidth * 3; i += cache.width) {
+                for (let j = startY; j < canvas.height + tileHeight * 3; j += cache.height) {
+                    ctx.drawImage(cache, i, j);
                 }
             }
         }
@@ -151,7 +178,7 @@ export function drawBackground(camX, camY, scale, doBorder = false, mapWidth, ma
         ctx.fill("evenodd");
     }
 
-    if (!util.options.hideGrid && !util.options.useTileBackground) {
+    if (!util.options.hideGrid && util.options.disableTiledBackground) {
         const gridSize = 32 * scale;
 
         ctx.save();
@@ -175,167 +202,198 @@ export function drawBackground(camX, camY, scale, doBorder = false, mapWidth, ma
     }
 }
 
+const overlayCacheMap = new Map();
+
 export function drawBackgroundOverlay(camX, camY, scale, biomeInfo) {
-    if (biomeInfo !== null && biomeInfo.alt) {
-        ctx.globalAlpha = .2;
+    if (!biomeInfo || !biomeInfo.alt) return;
 
-        const tile = getTile(biomeInfo.alt);
-        const offsetX = performance.now() / 750;
-        const offsetY = Math.sin(offsetX) * 4;
+    const tile = getTile(biomeInfo.alt);
+    if (!tile.ready) return;
 
-        const xx = camX + offsetX * scale;
-        const yy = camY + offsetY * scale;
+    const key = `${biomeInfo.alt}-${scale}`;
+    let cache = overlayCacheMap.get(key);
 
-        if (tile.ready) {
-            const tileWidth = tile.width * scale;
-            const tileHeight = tile.height * scale;
+    if (!cache) {
+        const tileWidth = tile.width * scale;
+        const tileHeight = tile.height * scale;
 
-            for (let i = (-xx % tileWidth) - tileWidth; i < canvas.width; i += tileWidth) {
-                for (let j = (-yy % tileHeight) - tileHeight; j < canvas.height; j += tileHeight) {
-                    ctx.drawImage(tile, i, j, tileWidth, tileHeight);
-                }
+        const offscreen = document.createElement("canvas");
+        offscreen.width = tileWidth * 3;
+        offscreen.height = tileHeight * 3;
+
+        const offctx = offscreen.getContext("2d");
+        for (let i = -tileWidth; i < offscreen.width + tileWidth; i += tileWidth) {
+            for (let j = -tileHeight; j < offscreen.height + tileHeight; j += tileHeight) {
+                offctx.drawImage(tile, i - 1, j - 1, tileWidth + 2, tileHeight + 2);
             }
         }
 
-        ctx.globalAlpha = 1;
+        cache = offscreen;
+        overlayCacheMap.set(key, cache);
     }
+
+    ctx.globalAlpha = 0.2;
+
+    const tileWidth = tile.width * scale;
+    const tileHeight = tile.height * scale;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    const startX = (-((camX % tileWidth) + tileWidth * 2)) + centerX % tileWidth;
+    const startY = (-((camY % tileHeight) + tileHeight * 2)) + centerY % tileHeight;
+
+    for (let i = startX; i < canvas.width + tileWidth * 3; i += cache.width) {
+        for (let j = startY; j < canvas.height + tileHeight * 3; j += cache.height) {
+            ctx.drawImage(cache, i, j);
+        }
+    }
+
+    ctx.globalAlpha = 1;
 }
 
 const TAU = Math.PI * 2;
 const PI10 = -Math.PI / 10;
 const PI10_2 = PI10 + Math.PI / 2;
 const diam = .334 - .15;
-export function drawNormalEye(x, y, lookAngle, mood, expression, isLeft = true) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.beginPath();
+export function drawNormalEye(x, y, lookAngle, mood, expression, isLeft = true, _ctx = ctx) {
+    _ctx.save();
+    _ctx.translate(x, y);
+    _ctx.beginPath();
 
     switch (expression) {
         case 1:
-            ctx.ellipse(0, 0, .334, .667, 0, 0, TAU);
+            _ctx.ellipse(0, 0, .334, .667, 0, 0, TAU);
             break;
         case 2:
             if (isLeft) {
-                ctx.ellipse(0, 0, .334, .667, 0, PI10, PI10 - (PI10_2) * (mood / 2));
+                _ctx.ellipse(0, 0, .334, .667, 0, PI10, PI10 - (PI10_2) * (mood / 2));
             } else {
-                ctx.ellipse(0, 0, .334, .667, 0, PI10 - (PI10_2) * (mood / 2), Math.PI - PI10);
+                _ctx.ellipse(0, 0, .334, .667, 0, PI10 - (PI10_2) * (mood / 2), Math.PI - PI10);
             }
             break;
         case 3:
-            ctx.ellipse(0, 0, .334, .667, 0, 0, TAU);
+            _ctx.ellipse(0, 0, .334, .667, 0, 0, TAU);
             break;
     }
 
-    ctx.closePath();
-    ctx.fillStyle = "#04190E";
-    ctx.strokeStyle = "#04190E";
-    ctx.lineWidth = .075;
-    ctx.stroke();
-    ctx.fill();
-    ctx.clip();
+    _ctx.closePath();
+    _ctx.fillStyle = util.colors.stingerBlack; // "#04190E"
+    _ctx.strokeStyle = util.colors.stingerBlack; // "#04190E"
+    _ctx.lineWidth = .1;
+    _ctx.stroke();
+    _ctx.fill();
+    _ctx.clip();
 
-    ctx.beginPath();
-    ctx.arc(Math.cos(lookAngle) * diam, Math.sin(lookAngle) * diam * 2.15, .3, 0, TAU);
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fill();
-    ctx.closePath();
+    _ctx.beginPath();
+    _ctx.arc(Math.cos(lookAngle) * diam, Math.sin(lookAngle) * diam * 2.15, .3, 0, TAU);
+    _ctx.fillStyle = "#FFFFFF";
+    _ctx.fill();
+    _ctx.closePath();
 
-    ctx.restore();
+    _ctx.restore();
 }
 
-export function drawDeadEye(x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.beginPath();
-    ctx.moveTo(-.4, -.4);
-    ctx.lineTo(.4, .4);
-    ctx.moveTo(.4, -.4);
-    ctx.lineTo(-.4, .4);
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = .2;
-    ctx.stroke();
-    ctx.restore();
+export function drawDeadEye(x, y, _ctx = ctx) {
+    _ctx.save();
+    _ctx.translate(x, y);
+    _ctx.beginPath();
+    _ctx.moveTo(-.4, -.4);
+    _ctx.lineTo(.4, .4);
+    _ctx.moveTo(.4, -.4);
+    _ctx.lineTo(-.4, .4);
+    _ctx.strokeStyle = "#000000";
+    _ctx.lineWidth = .2;
+    _ctx.stroke();
+    _ctx.restore();
 }
 
-export function drawNormalMouth(mouthDip) {
-    ctx.beginPath();
-    ctx.moveTo(-.75, 1.16);
-    ctx.quadraticCurveTo(0, mouthDip, .75, 1.16);
-    ctx.strokeStyle = "#04190E";
-    ctx.lineWidth = .2;
-    ctx.lineCap = "round";
-    ctx.stroke();
-    ctx.closePath();
+export function drawNormalMouth(mouthDip, _ctx = ctx) {
+    _ctx.beginPath();
+    _ctx.moveTo(-.67, 1.1);
+    _ctx.quadraticCurveTo(0, mouthDip, .67, 1.1);
+    _ctx.strokeStyle = util.colors.stingerBlack; // "#04190E"
+    _ctx.lineWidth = .2;
+    _ctx.lineCap = "round";
+    _ctx.stroke();
+    _ctx.closePath();
 }
 
-export function drawFace(size, lookAngle, mood, mouthDip, expression, dead = false) {
-    ctx.scale(size, size);
+export function drawFace(size, lookAngle, mood, mouthDip, expression, dead = false, _ctx = ctx) {
+    _ctx.scale(size, size);
     if (dead) {
-        drawDeadEye(-.75, -.5);
-        drawDeadEye(.75, -.5);
+        drawDeadEye(-.75, -.5, _ctx);
+        drawDeadEye(.75, -.5, _ctx);
     } else {
-        drawNormalEye(-.75, -.5, lookAngle, mood, expression);
-        drawNormalEye(.75, -.5, lookAngle, mood, expression, false);
+        drawNormalEye(-.75, -.5, lookAngle, mood, expression, true, _ctx);
+        drawNormalEye(.75, -.5, lookAngle, mood, expression, false, _ctx);
     }
-    drawNormalMouth(mouthDip);
-    ctx.scale(1 / size, 1 / size);
+    drawNormalMouth(mouthDip, _ctx);
+    _ctx.scale(1 / size, 1 / size);
 }
 
 export function drawWrappedText(text, x, y, size, maxWidth, fill = "#FFFFFF", _ctx = ctx, wrapTo = x) {
-    _ctx.font = `bold ${size}px sans-serif`;
+    _ctx.font = `bold ${size}px Ubuntu`;
 
-    _ctx.strokeStyle = mixColors(fill, "#000000", 0.3);
-    _ctx.lineWidth = size * 0.2;
+    _ctx.strokeStyle = mixColors(fill, "#000000", .8);
+    _ctx.lineWidth = size * .2;
     _ctx.fillStyle = fill;
 
     const lines = [];
-    const words = text.split(" ");
 
-    // Handle single-word case early
-    if (words.length === 1) {
-        _ctx.strokeText(text, x, y);
-        _ctx.fillText(text, x, y);
-        return _ctx.measureText(text).width;
-    }
+    const lineBreaks = text.split("\n");
 
-    let line = "";
-    for (let i = 0; i < words.length; i++) {
-        // Handle words that are too long to fit in maxWidth by splitting them
-        while (_ctx.measureText(words[i]).width > maxWidth) {
-            const oldWord = words[i];
-            const newWords = [];
-            let wordSegment = "";
+    for (let p = 0; p < lineBreaks.length; p++) {
+        const words = lineBreaks[p].split(" ");
 
-            for (let j = 0; j < oldWord.length; j++) {
-                const testSegment = wordSegment + oldWord[j];
-                if (_ctx.measureText(testSegment).width > maxWidth) {
-                    newWords.push(wordSegment);
-                    wordSegment = "";
-                }
-                wordSegment += oldWord[j];
-            }
-            newWords.push(wordSegment); // Push last remaining segment
-
-            // Replace the current word with the new segments
-            words.splice(i, 1, ...newWords);
-
-            // If the word was split into one piece, stop splitting
-            if (newWords.length === 1) break;
-        }
-
-        const testLine = line + words[i] + " ";
-        const testWidth = _ctx.measureText(testLine).width;
-
-        if (testWidth > maxWidth && line) {
-            lines.push(line.trim());
-            line = words[i] + " ";
+        if (words.length === 1) {
+            lines.push(words[0]);
         } else {
-            line = testLine;
+            let line = "";
+
+            for (let i = 0; i < words.length; i++) {
+                // Handle words that are too long to fit in maxWidth by splitting them
+                while (_ctx.measureText(words[i]).width > maxWidth) {
+                    const oldWord = words[i];
+                    const newWords = [];
+                    let wordSegment = "";
+
+                    for (let j = 0; j < oldWord.length; j++) {
+                        const testSegment = wordSegment + oldWord[j];
+                        if (_ctx.measureText(testSegment).width > maxWidth) {
+                            newWords.push(wordSegment);
+                            wordSegment = "";
+                        }
+                        wordSegment += oldWord[j];
+                    }
+                    newWords.push(wordSegment); // Push last remaining segment
+
+                    // Replace the current word with the new segments
+                    words.splice(i, 1, ...newWords);
+
+                    // If the word was split into one piece, stop splitting
+                    if (newWords.length === 1) break;
+                }
+
+                const testLine = line + words[i] + " ";
+                const testWidth = _ctx.measureText(testLine).width;
+
+                if (testWidth > maxWidth && line) {
+                    lines.push(line.trim());
+                    line = words[i] + " ";
+                } else {
+                    line = testLine;
+                }
+            }
+
+            lines.push(line.trim());
+        }
+
+        // spacing
+        if (p !== lineBreaks.length - 1) {
+            lines.push("");
         }
     }
-
-    // Push the final line
-    lines.push(line.trim());
 
     // Render each line with wrapping applied
     for (let i = 0; i < lines.length; i++) {
