@@ -14,7 +14,10 @@ const MAP_TYPES = {
     hell: "/server/maps/hell.json",
     sewers: "/server/maps/sewers.json",
     darkForest: "/server/maps/darkForest.json",
-    allMobs: "/server/maps/allMobs.json"
+    allMobs: "/server/maps/allMobs.json",
+    sleepyMaze: "/server/maps/sleepyMaze.json",
+    sleepyMazeOmega: "/server/maps/sleepyMazeOmega.json",
+    crypt: "/server/maps/crypt_map.json"
 };
 
 let mapSrc = MAP_TYPES.standard,
@@ -26,10 +29,10 @@ export default async function initTerrain(type) {
     } else {
         switch (type) {
             case BIOME_TYPES.DEFAULT:
-                mapSrc = MAP_TYPES.allMobs;
+                mapSrc = MAP_TYPES.sleepyMazeOmega;
                 break;
             case BIOME_TYPES.GARDEN:
-                mapSrc = MAP_TYPES.standard;
+                mapSrc = MAP_TYPES.sleepyMaze;
                 break;
             case BIOME_TYPES.DESERT:
                 mapSrc = MAP_TYPES.desert;
@@ -49,6 +52,9 @@ export default async function initTerrain(type) {
             case BIOME_TYPES.DARK_FOREST:
                 mapSrc = MAP_TYPES.darkForest;
                 break;
+            case BIOME_TYPES.CRYPT:
+                mapSrc = MAP_TYPES.crypt;
+                break;
             default:
                 throw new Error("Invalid biome type");
         }
@@ -60,6 +66,8 @@ export default async function initTerrain(type) {
             map = mapSrc;
         }
     }
+
+    globalThis._MAP_CELLS = map.cells;
 
     const generator = {
         width: map.width,

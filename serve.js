@@ -2,11 +2,9 @@ import http from "http";
 import fs from "fs";
 
 // Get the content type based on the file extension
-const getContentType = (path) => {
-    const ext = path.split(".")[1];
+const getContentType = path => {
+    const ext = path.split(".").at(-1);
     switch (ext) {
-        case "html":
-            return "text/html";
         case "js":
             return "text/javascript";
         case "css":
@@ -20,25 +18,28 @@ const getContentType = (path) => {
         case "json":
             return "application/json";
         case "txt":
-        default:
             return "text/plain";
-    }
+        case "html":
+        default:
+            return "text/html";
+        }
 };
 
-// Serve the /public directory
+// Serve the /build directory
 const server = http.createServer((req, res) => {
-    const path = req.url === "/" ? "/index.html" : req.url;
-
-    fs.readFile(`./public${path}`, (err, data) => {
+    const path = `./build${req.url}`;
+    const filePath = fs.existsSync(path) && fs.lstatSync(path).isDirectory() ? path + ( path.endsWith("/") ? '' : '/' ) + "index.html" : path;
+    const contentType = getContentType(path);
+    fs.readFile(filePath, (err, data) => {
         if (err) {
             res.writeHead(404);
             res.end("Not Found");
         } else {
-            res.setHeader("Content-Type", getContentType(path));
+            res.setHeader("Content-Type", contentType);
             res.writeHead(200);
             res.end(data);
         }
     });
 });
 
-server.listen(8080);
+server.listen(process.env.GAME_SERVER_PORT);

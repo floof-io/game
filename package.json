@@ -5,13 +5,16 @@
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "build": "webpack --config ./webpack.config.js"
+        "build": "webpack --config ./webpack.config.js",
+        "watch": "webpack --watch --mode development"
     },
     "dependencies": {
+        "js-beautify": "latest",
+        "uglify-js": "latest",
         "webpack": "^5.78.0",
         "webpack-cli": "^4.8.0",
-        "uglify-js": "latest",
-        "js-beautify": "latest"
+        "dotenv": "^17.2.3",
+        "html-webpack-plugin": "^5.6.4"
     },
     "engines": {
         "node": ">=16.0.0"

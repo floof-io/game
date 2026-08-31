@@ -1,4 +1,111 @@
-# Update (3/4/2025):
+# Update (7/16/2026)
+- Discord logins are now required to join lobbies.
+
+# Update (7/13/2026)
+- Show Damage Numbers now show real damage dealt and can render up to 1 quadrillion
+
+# Update (7/12/2026)
+- Fixed Queen Ant drawings
+- Fixed player equipped Amulet and Armor visuals
+- Fixed mob stat boxes having extra space at the bottom
+- Updated multiple mob and petal drawings
+
+# Update (7/10/2026)
+- Fixed Show Damage Numbers only showing lost percentage and not the actual damage dealt
+- Added animations for damage text and healing
+
+# Update (7/13/2026)
+- Show Damage Numbers now show real damage dealt and can render up to 1 quadrillion
+
+# Update (7/12/2026)
+- Fixed Queen Ant drawings
+- Fixed player equipped Amulet and Armor visuals
+- Fixed mob stat boxes having extra space at the bottom
+- Updated multiple mob and petal drawings
+
+# Update (7/10/2026)
+- Fixed Show Damage Numbers only showing lost percentage and not the actual damage dealt
+- Added animations for damage text and healing
+
+# Update (7/2/2026)
+- Added Show Damage Numbers
+
+# Update (6/20/2026)
+- Gradients are now disabled by default
+- Fixed craft menu lag
+- Optimized mob gradients
+- Press J to view rarity zones!
+
+# Update (6/7/2026)
+- Added crafting menu to the three main trusted lobbies (Thanks to @itzshovel)
+- Multiple bugfixes with the chat and the menu.
+
+# Update (5/18/2026)
+- Added gradients for both Petal icons and Mob icons
+- Petals in the inventory can now show their stats
+- You can now view everyone in the minimap in certain lobbies
+
+# Update (5/9/2026)
+- Updated Pumpkin and Jack O' Lantern Drawings (Thanks to @Fubuki and @Dwajl)
+
+# Update (5/5/2026)
+- Polished some petal renders and icons (With help from @Fubuki)
+
+# Update (5/3/2026)
+- Fixed some drawing bugs (Thanks to @Fubuki and @K3)
+- Added 3 new drawing options: quadraticCurveTo, bezierCurveTo, rotate
+- Updated Wing, Fang, and Jelly drawings (Thanks to @Fubuki)
+
+# Update (11/29/2025)
+- Hundreds of petal/mob rebalances
+- Bone now has proper armor and can now be given to mobs as well
+- Damage reduction cap buffed to 75%
+- Damage reflection can now be given a cap based on the entity's health
+- Mobs now give better and more consistent xp
+- Centipedes and Bumblebee now have custom movements
+- Centipede length is now much more random, and can now spawn with up to 30 segments
+- Added 2 new options
+- Added many new modding posibilities, especially for custom mobs
+- Added custom petal icon support
+- Added icons for mobs in the Waves mode
+- Added leaderboards for every mode
+- Added a crit system for petals, the faster the petal is, the higher the chance
+- Huge ui updates
+- A lot of petal and mob drawing changes
+- Players and Bots now spawn with 60% less hp and body damage but it now scales faster
+- Flowers now have better looking faces
+- Changed some petal icon renders
+- Changed mob tables for Garden and Desert
+- Split petals now dont have divided damage, might be op
+- Orange no longer spazes out
+- Dandelion now prevents Starfish healing for a duration depending on its rarity
+- Square, Triangle, and Pentagon now show their uis
+- Fixed player wilts having glitched colors
+- Fixed a bug where player spawned mobs wouldn't have an hp buff
+- Fixed a bug where split Grapes wouldn't have poison
+- Fixed a bug where wilt branches would be abnormally small
+- Fixed a bug where Bots wouldn't spawn without petals
+- Fixed every mob in the game having the incorrect color when spawned by a player
+- Tiled background optimizations
+- Inventories for lobbies
+- Shield bar now show up in the level ui
+- You now have to press r instead of x to switch loadouts
+- You can now hold g to show the rarity of petals
+- You can now have special characters in your username
+- You can now press enter to chat instead of escape
+- Yggdrasil immunity stats are now editable
+- Wave progression has been significantly improved. Rarities now spawn much more randomly and unpredictably
+- Healing/shield petals like Rose and Shell can now heal nearby teammates
+- Special thanks to @Fubuki, @NekObbyist, @Cryptverse, and @Appl3Cubic for many suggestions. Special thanks to many others for being patient in this long awaited update
+- Much more!
+
+# Update (10/6/2025)
+- 24 rarity limit increased to 30
+
+# Update (06/3/2025)
+- Nerfed tank projectile speed by 50%
+
+# Update (03/4/2025):
 - Updated map editor to fix a few bugs
 - Updated terrain system to use map editor maps
 - Special zones are now supported!
@@ -215,7 +322,7 @@
 - Magnet now grounds Lightning
 - Lightning is now more accurage against players
 - Added angry flowers
-- Added some more support for the modding API, see info at https://floof.eparker.dev/moddingAPI/
+- Added some more support for the modding API, see info at https://floof.supercord.lol/moddingAPI/
 - Added ECONNRESET error handling
 - You now lose some XP when you die
 - Damage Reflection now only reflects the real damage done. For example, if a mob has 8 health remaining and your petal does 25 damage, only 8 damage will be reflected back upon you.

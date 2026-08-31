@@ -1,12 +1,15 @@
 import { mixColors } from "./canvas.js";
-import { options } from "./util.js";
+import { options, colors } from "./util.js";
+import * as net from "./net.js";
 
 export function showMenu(menuID) {
     document.getElementById(menuID).classList.add("active");
 }
 
 const topButtons = document.getElementById("topButtons");
+const bottomButtons = document.getElementById("bottomButtons");
 const menuContainer = document.getElementById("menus");
+const buttonsContainer = document.getElementById("menus2");
 
 const menuColors = [
     "#C8C8C8",
@@ -16,6 +19,9 @@ const menuColors = [
     "#C88888"
 ];
 
+const buttonColors = [
+    colors.inventory
+];
 const closeButton = topButtons.querySelector("#closeButton");
 for (let i = 0; i < 5; i++) {
     const child = topButtons.children.item(i);
@@ -67,6 +73,37 @@ for (let i = 0; i < 5; i++) {
     }
 }
 
+for (let i = 0; i < 1; i++) {
+    const child = bottomButtons.children.item(i);
+
+    child.style.backgroundColor = colors.inventory;
+    child.style.borderColor = mixColors(colors.inventory, "#000000", .2);
+
+    child.style.left = "10px";
+    child.style.bottom = "10px";
+
+    const menu = buttonsContainer.children.item(i);
+    menu.style.backgroundColor = colors.inventory
+    menu.style.borderColor = mixColors(colors.inventory, "#000000", .2);
+
+    child.onclick = function () {
+        if (menu.classList.contains("active")) {
+            for (let j = 0; j < buttonsContainer.children.length; j++) {
+                buttonsContainer.children.item(j).classList.remove("active");
+            }
+            return;
+        }
+
+        for (let j = 0; j < buttonsContainer.children.length; j++) {
+            buttonsContainer.children.item(j).classList.remove("active");
+        }
+
+        net.state.inventory2 = undefined
+
+        menu.classList.toggle("active");
+    }
+}
+
 export function showMenus() {
     document.getElementById("menuContainer").classList.add("active");
 }
@@ -76,6 +113,74 @@ export function hideMenus() {
     for (let j = 0; j < menuContainer.children.length; j++) {
         menuContainer.children.item(j).classList.remove("active");
     }
+}
+
+function bindCheckbox(option, elementID) {
+    const element = document.getElementById(elementID);
+
+    if (!element) {
+        console.warn("Missing checkbox:", elementID);
+        return;
+    }
+
+    const saved = localStorage.getItem("options-" + option);
+
+    if (saved !== null) {
+        options[option] = saved === "true";
+    }
+
+    element.checked = options[option];
+
+    element.onchange = function () {
+        options[option] = element.checked;
+
+        localStorage.setItem(
+            "options-" + option,
+            String(element.checked)
+        );
+    };
+}
+
+function bindNumber(option, elementID, {
+    min = -Infinity,
+    max = Infinity
+} = {}) {
+
+    const element = document.getElementById(elementID);
+
+    if (!element) {
+        console.warn("Missing number input:", elementID);
+        return;
+    }
+
+    const saved = localStorage.getItem("options-" + option);
+
+    if (saved !== null) {
+        const value = Number(saved);
+
+        if (!Number.isNaN(value)) {
+            options[option] = value;
+        }
+    }
+
+    element.value = options[option];
+
+    element.oninput = function () {
+        let value = Number(element.value);
+
+        if (Number.isNaN(value)) {
+            value = 0;
+        }
+
+        value = Math.max(min, Math.min(max, value));
+
+        options[option] = value;
+
+        localStorage.setItem(
+            "options-" + option,
+            String(value)
+        );
+    };
 }
 
 function bindOptionToggle(option, elementID) {
@@ -93,14 +198,28 @@ function bindOptionToggle(option, elementID) {
     }
 }
 
-bindOptionToggle("showDebug", "show-debug");
-bindOptionToggle("hideGrid", "hide-grid");
-bindOptionToggle("rigidInterpolation", "rigid-interpolation");
-bindOptionToggle("mouseMovement", "mouse-movement");
-bindOptionToggle("hideEntityUI", "hide-entity-ui");
-bindOptionToggle("useTileBackground", "use-tile-background");
-bindOptionToggle("fancyGraphics", "extra-graphics");
-bindOptionToggle("showHitboxes", "show-hitboxes");
+bindCheckbox("showDebug", "show-debug");
+bindCheckbox("hideGrid", "hide-grid");
+bindCheckbox("rigidInterpolation", "rigid-interpolation");
+bindCheckbox("mouseMovement", "mouse-movement");
+bindCheckbox("hideEntityUI", "hide-entity-ui");
+bindCheckbox("disableTiledBackground", "disable-tiled-background");
+bindCheckbox("fancyGraphics", "extra-graphics");
+bindCheckbox("showHitboxes", "show-hitboxes");
+bindCheckbox("showDamageNumbers", "show-damage-numbers");
+bindCheckbox("cacheMobAssets", "cache-mob-assets");
+bindCheckbox("cachePetalAssets", "cache-petal-assets");
+
+bindCheckbox("disableGradients", "disable-gradients");
+
+bindNumber(
+    "minimumGradientRarity",
+    "minimum-gradient-rarity",
+    {
+        min: 0,
+        max: 999
+    }
+);
 
 export async function loadAndRenderChangelogs() {
     const changelogs = [];

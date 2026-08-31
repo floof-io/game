@@ -5,7 +5,7 @@ import { mobConfigs, mobIDOf, petalConfigs, tiers } from "./config.js";
 import { xpForLevel } from "../../lib/util.js";
 
 const blockList = [];
-fetch("/profanity.txt").then(res => res.text()).then(txt => {
+fetch((typeof Bun !== "undefined" ? Bun.env.GAME_SERVER : "") + "/profanity.txt").then(res => res.text()).then(txt => {
     blockList.push(...txt.replaceAll("\r", "").split("\n").map(e => e.trim()));
     console.log("Profanity list loaded", blockList.length, "words");
 });
@@ -216,6 +216,7 @@ export class PlayerClientCache {
 export class PetalClientCache {
     id = 0;
     index = 0;
+    rarity = 0;
     isNew = true;
 
     x = 0;
@@ -269,6 +270,7 @@ export class PetalClientCache {
             writer.setUint32(this.id);
             writer.setUint8(ENTITY_FLAGS.NEW);
             writer.setUint8(this.index);
+            writer.setUint8(this.rarity);
             writer.setFloat32(this.x);
             writer.setFloat32(this.y);
             writer.setFloat32(this.size);
@@ -529,10 +531,10 @@ export class Camera {
     see(writer) {
         const retrieved = state.viewsSpatialHash.retrieve({
             _AABB: {
-                x1: this.x - this.fov / 2,
-                y1: this.y - this.fov / 2,
-                x2: this.x + this.fov / 2,
-                y2: this.y + this.fov / 2
+                x1: this.x - this.fov / 1.85,
+                y1: this.y - this.fov / 1.85,
+                x2: this.x + this.fov / 1.85,
+                y2: this.y + this.fov / 1.85
             }
         });
 
@@ -555,6 +557,7 @@ export class Camera {
                         const cache = new PetalClientCache();
                         cache.id = entity.id;
                         cache.index = entity.index;
+                        cache.rarity = entity.rarity;
                         cache.isNew = true;
                         this.petalCache.set(entity.id, cache);
                     }
@@ -567,7 +570,7 @@ export class Camera {
                         const cache = new MobClientCache();
                         cache.id = entity.id;
                         cache.index = entity.index;
-                        cache.rarity = entity.rarity;
+                        cache.rarity = entity.rarity;;
                         cache.isNew = true;
                         this.mobCache.set(entity.id, cache);
                     }
@@ -623,6 +626,7 @@ export class Camera {
             writer.setFloat32(drop.size);
             writer.setUint8(drop.index);
             writer.setUint8(drop.rarity);
+            writer.setUint16(drop.duration);
         });
 
         writer.setUint32(0);
@@ -693,6 +697,7 @@ class Disconnect {
         this.secondarySlots = client.secondarySlots;
         this.body = client.body;
         this.team = client.team;
+        this.inventory = client.inventory;
 
         Client.disconnects.set(this.uuid, this);
 
@@ -706,7 +711,7 @@ class Disconnect {
             if (this.body && !this.body.health.isDead) {
                 this.body.destroy();
             }
-        }, 1000 * 60);
+        }, 1000 * 3600 * 24);
     }
 }
 
@@ -724,7 +729,7 @@ export default class Client {
         this.uuid = uuid;
         this.nameColor = ["#FFFFFF", "#D85555"][+masterPermissions];
         this.masterPermissions = +masterPermissions;
-
+        this.inventory = {};
         this.camera = new Camera();
 
         /** @type {Player|null} */
@@ -746,7 +751,6 @@ export default class Client {
         this.secondarySlots = new Array(5).fill(null).map(() => null);
         this.level = 1;
         this.xp = 1;
-        this.levelProgress = 0;
 
         this.lastChat = 0;
         this.frownyMessages = 0;
@@ -784,33 +788,30 @@ export default class Client {
                     this.slots.push({ id: 0, rarity: 0 });
                     this.secondarySlots.push(null);
                 }
-            } else if (slots < this.slots.length) {
-                for (let i = this.slots.length - 1; i >= slots; i--) {
-                    this.slots.pop();
-                    this.secondarySlots.pop();
-                }
-            }
+            } else if (slots < this.slots.length)
+                for (let i = this.slots.length - 1; i >= slots; i--)
+                    for (const { id, rarity } of [this.slots.pop(), this.secondarySlots.pop()].filter(slot => slot !== null))
+                        if (this.inventory[tiers[rarity].name][id]) this.inventory[tiers[rarity].name][id]++;
+                        else this.inventory[tiers[rarity].name][id] = 1;
 
-            if (this.body && !this.body.health.isDead) {
-                this.body.initSlots(slots);
-            }
+            if (this.body && !this.body.health.isDead) this.body.initSlots(slots);
         }
 
         this.levelProgress = this.level < 2 ? this.xp / xpForLevel(this.level) : (this.xp - xpForLevel(this.level - 1)) / (xpForLevel(this.level) - xpForLevel(this.level - 1));
     }
 
     get healthAdjustement() {
-        return 150 + 5 * Math.pow(this.level, 1.3);
+        return 40 + 5 * Math.pow(this.level, 1.5);
     }
 
     get bodyDamageAdjustment() {
-        return 12 + 2.5 * Math.pow(this.level, 1.325);
+        return 5 + 1 * Math.pow(this.level, 1.5);
     }
 
     get highestRarity() {
         let highest = 0;
         for (const slot of this.slots) {
-            if (slot.rarity > highest) {
+            if (slot && slot.rarity > highest) {
                 highest = slot.rarity;
             }
         }
@@ -835,8 +836,12 @@ export default class Client {
                 return true;
             }
         }
-
-        return false;
+        const rarity = tiers[drop.rarity].name;
+        if (!this.inventory[rarity][drop.index]) {
+            this.inventory[rarity][drop.index] = 0;
+        }
+        this.inventory[rarity][drop.index] += 1;
+        return true;
     }
 
     /**
@@ -848,27 +853,20 @@ export default class Client {
                 this.talk(CLIENT_BOUND.PONG);
                 break;
             case SERVER_BOUND.VERIFY:
-                if (this.verified) {
-                    this.kick("Already verified");
-                    return;
-                }
+                if (this.verified) return this.kick("Already verified");
 
-                this.username = reader.getStringUTF8().replace(/[^a-zA-Z0-9_\-]/g, "");
+                this.username = reader.getStringUTF8();
                 const lowercase = this.username.toLowerCase();
-                if (this.username.length > 24 || tripsFilter(lowercase)) {
-                    this.kick("Invalid username");
-                    return;
-                }
+                if (this.username.length > 24 || tripsFilter(lowercase)) return this.kick("Invalid username");
 
                 this.verified = true;
                 console.log(`Client ${this.id} verified as ${this.username}`);
                 this.talk(CLIENT_BOUND.READY);
                 this.sendRoom();
                 state.sendTerrain(this.id);
+                tiers.forEach(tier => this.inventory[tier.name] = {});
 
-                if (this.uuid === state.secretKey && this.masterPermissions < 1) {
-                    this.nameColor = "#F5D230";
-                }
+                if (this.uuid === state.secretKey && this.masterPermissions < 1) this.nameColor = "#F5D230";
 
                 const dc = Client.disconnects.get(this.uuid);
 
@@ -878,6 +876,7 @@ export default class Client {
                     this.slots = dc.slots;
                     this.secondarySlots = dc.secondarySlots;
                     this.team = dc.team;
+                    this.inventory = dc.inventory;
                     this.addXP(0);
 
                     if (dc.body) {
@@ -890,6 +889,7 @@ export default class Client {
 
                     console.log(`Client ${this.id} reconnected as ${this.username}`);
                 }
+                state.playerCount++;
                 break;
             case SERVER_BOUND.SPAWN:
                 if (!this.verified) {
@@ -907,15 +907,27 @@ export default class Client {
                 this.body.client = this;
                 this.body.health.set(this.healthAdjustement);
                 this.body.damage = this.bodyDamageAdjustment;
+                this.addXP(0)
 
                 this.body.initSlots(this.slots.length);
                 for (let i = 0; i < this.slots.length; i++) {
-                    this.body.setSlot(i, this.slots[i].id, this.slots[i].rarity);
+                    if (this.slots[i]) {
+                        this.body.setSlot(i, this.slots[i].id, this.slots[i].rarity);
+                    }
                 }
+
+                this.body.spawnInvincibility = true
+
+                setTimeout(() => {
+                    if (this.body) {
+                        this.body.spawnInvincibility = false;
+                    }
+                }, 2 * 1000);
 
                 if (state.isTDM) {
                     this.body.team = -this.team;
                 }
+                state.alivePlayers.push(this);
                 break;
             case SERVER_BOUND.INPUTS: {
                 if (!this.verified) {
@@ -929,7 +941,7 @@ export default class Client {
 
                 const flags = reader.getUint8();
 
-                if ((flags & 0x40) === 0x40) {
+                if ((flags & 0x40) === 0x40 || (flags & 0x80) === 0x80) {
                     this.body.moveAngle = reader.getFloat32();
                     this.body.moveStrength = Math.min(1, Math.max(0, reader.getFloat32())) * this.body.speed;
                 } else {
@@ -983,11 +995,13 @@ export default class Client {
                                 this.slots[moveeIndex] = this.slots[moverIndex];
                                 this.slots[moverIndex] = temp;
 
-                                this.body.setSlot(moveeIndex, this.slots[moveeIndex].id, this.slots[moveeIndex].rarity);
+                                if (this.slots[moveeIndex]) {
+                                    this.body.setSlot(moveeIndex, this.slots[moveeIndex].id, this.slots[moveeIndex].rarity);
+                                }
                                 this.body.setSlot(moverIndex, this.slots[moverIndex].id, this.slots[moverIndex].rarity);
                                 break;
                             case 1: // Secondary slots
-                                if (moverIndex < 0 || moverIndex >= this.secondarySlots.length || this.secondarySlots[moverIndex] === null) {
+                                if (moverIndex < 0 || moverIndex >= this.secondarySlots.length) {
                                     return;
                                 }
 
@@ -995,7 +1009,9 @@ export default class Client {
                                 this.slots[moveeIndex] = this.secondarySlots[moverIndex];
                                 this.secondarySlots[moverIndex] = temp2;
 
-                                this.body.setSlot(moveeIndex, this.slots[moveeIndex].id, this.slots[moveeIndex].rarity);
+                                if (this.slots[moveeIndex]) {
+                                    this.body.setSlot(moveeIndex, this.slots[moveeIndex].id, this.slots[moveeIndex].rarity);
+                                }
                                 break;
                         }
                         break;
@@ -1025,14 +1041,86 @@ export default class Client {
                                 this.secondarySlots[moveeIndex] = this.secondarySlots[moverIndex];
                                 this.secondarySlots[moverIndex] = temp2;
                                 break;
-                            case 2: // Destroy
+                            /* case 2: // Destroy
                                 this.addXP(Math.pow(this.secondarySlots[moveeIndex].rarity + 1, 2) * 2);
                                 this.secondarySlots[moveeIndex] = null;
                                 break;
+                            */
                         }
-                        break
+                        break;
                 }
-            } break;
+            }
+                if (this.body) {
+                    this.body.initSlots(this.slots.length)
+                }
+                break;
+            case SERVER_BOUND.INVENTORY_CHANGE_LOADOUT: {
+                if (!this.verified) {
+                    this.kick("Not verified");
+                    return;
+                }
+
+                if (!this.body || this.body.health.isDead) {
+                    return;
+                }
+
+                let moveeIndex = reader.getUint8();
+                let moveeRarity = reader.getUint8();
+                let moverType = reader.getUint8();
+                let moverIndex = reader.getUint8();
+                let moverRarity = reader.getUint8();
+                let moverPetalIndex = reader.getUint8();
+
+                let inventoryRarity = tiers[moverRarity]?.name;
+
+                switch (moverType) {
+                    case 0: // Slots
+                        if (!this.inventory[tiers[moveeRarity].name][moveeIndex] || this.slots[moverIndex].id !== moverPetalIndex || this.slots[moverIndex].rarity !== moverRarity) return;
+                        if (!this.inventory[inventoryRarity][moverPetalIndex]) {
+                            this.inventory[inventoryRarity][moverPetalIndex] = 0;
+                        }
+                        this.inventory[inventoryRarity][moverPetalIndex] += 1;
+
+                        this.slots[moverIndex].id = moveeIndex;
+                        this.slots[moverIndex].rarity = moveeRarity;
+                        this.body.setSlot(moverIndex, this.slots[moverIndex].id, this.slots[moverIndex].rarity);
+
+                        this.inventory[tiers[moveeRarity].name][moveeIndex]--;
+                        break;
+                    case 1: // Secondary slots
+                        if (!this.inventory[tiers[moveeRarity].name][moveeIndex] || (moverPetalIndex !== 255 && this.secondarySlots[moverIndex]?.id !== moverPetalIndex || this.secondarySlots[moverIndex]?.rarity !== moverRarity)) return;
+                        if (moverPetalIndex === 255) {
+                            this.secondarySlots[moverIndex] = {
+                                id: moveeIndex,
+                                rarity: moveeRarity
+                            };
+                            this.inventory[tiers[moveeRarity].name][moveeIndex]--;
+                            break;
+                        }
+                        if (!this.inventory[inventoryRarity][moverPetalIndex]) {
+                            this.inventory[inventoryRarity][moverPetalIndex] = 0;
+                        }
+                        this.inventory[inventoryRarity][moverPetalIndex] += 1;
+
+                        this.secondarySlots[moverIndex].id = moveeIndex;
+                        this.secondarySlots[moverIndex].rarity = moveeRarity;
+
+                        this.inventory[tiers[moveeRarity].name][moveeIndex]--;
+                        break;
+                    case 2: // Secondary slot into inventory
+                        moverPetalIndex = this.secondarySlots[moverIndex]?.id;
+                        inventoryRarity = tiers[this.secondarySlots[moverIndex]?.rarity]?.name
+
+                        if (!this.inventory[inventoryRarity][moverPetalIndex]) {
+                            this.inventory[inventoryRarity][moverPetalIndex] = 0;
+                        }
+                        this.inventory[inventoryRarity][moverPetalIndex] += 1;
+
+                        this.secondarySlots[moverIndex] = null;
+                        break;
+                }
+            }
+                break;
             case SERVER_BOUND.DEV_CHEAT: {
                 if (!this.verified) {
                     this.kick("Not verified");
@@ -1230,7 +1318,7 @@ export default class Client {
                     return;
                 }
 
-                if (performance.now() - this.lastChat < 1000) {
+                if (performance.now() - this.lastChat < 500) {
                     this.systemMessage("You're chatting too fast.", "#22CACA");
                     return;
                 }
@@ -1295,17 +1383,18 @@ export default class Client {
 
     onClose() {
         if (this.verified) {
-            console.log(`Client ${this.id} (${this.username}) disconnected`);
-
-            if (this.body && !this.body.health.isDead && this.level >= 20) {
-                new Disconnect(this);
-            } else if (this.body) {
-                this.body.destroy();
-            }
+            console.log(`Client ${this.id} (${this.username}) disconnected.`);
+            // if (this.body /* && !this.body.health.isDead && this.level >= 20 */) {
+            new Disconnect(this);
+            // } else 
+            this.body?.destroy();
+            // }
         } else {
             console.log(`Client ${this.id} disconnected`);
         }
 
+        state.alivePlayers = state.alivePlayers.filter(m => m.id !== this.id);
+        state.playerCount = Math.max(0, state.playerCount - 1);
         state.clients.delete(this.id);
     }
 
@@ -1353,9 +1442,13 @@ export default class Client {
         writer.setUint8(this.slots.length);
         for (let i = 0; i < this.slots.length; i++) {
             const slot = this.slots[i];
-            writer.setUint8(slot.id);
-            writer.setUint8(slot.rarity);
-            writer.setFloat32(this.slotRatios[i] ?? 0);
+            writer.setUint8(slot ? 1 : 0);
+
+            if (slot) {
+                writer.setUint8(slot.id);
+                writer.setUint8(slot.rarity);
+                writer.setFloat32(this.slotRatios[i] ?? 0);
+            }
         }
 
         writer.setUint8(this.secondarySlots.length);
@@ -1374,14 +1467,89 @@ export default class Client {
             writer.setUint16(state.currentWave);
             writer.setUint16(state.livingMobCount);
             writer.setUint16(state.maxMobs);
+            writer.setUint16(state.aliveMobs.length);
+
+            for (const entity of state.aliveMobs) {
+                writer.setUint8(entity.index);
+                writer.setUint8(entity.rarity);
+            }
         } else {
             writer.setUint8(0);
         }
 
+        writer.setUint8(state.alivePlayers.length);
+        for (const entity of state.alivePlayers) {
+            writer.setUint8(entity.team);
+            writer.setUint8(entity.highestRarity);
+            writer.setFloat32(entity.xp / 10000);
+            writer.setStringUTF8(entity.username);
+        }
+
+        writer.setUint8(state.playerCount);
+
         writer.setUint16(this.level);
         writer.setFloat32(this.levelProgress);
+        tiers.forEach(tier => {
+            const petals = this.inventory[tier.name];
+            const petalIds = Object.keys(petals);
+            writer.setUint16(petalIds.length);
+            petalIds.forEach(id => {
+                writer.setUint16(parseInt(id));
+                writer.setUint16(petals[id]);
+            });
+        });
 
         state.router.postMessage(writer.build());
+
+        const minimapWriter = new Writer(true);
+        minimapWriter.setUint8(ROUTER_PACKET_TYPES.PIPE_PACKET);
+        minimapWriter.setUint16(this.id);
+        minimapWriter.setUint8(112);
+
+        const players = [];
+
+        for (const [, obj] of state.entities) {
+            if (!obj) continue;
+            if (obj.type !== ENTITY_TYPES.PLAYER) continue;
+
+            players.push(obj);
+        }
+
+        minimapWriter.setUint16(players.length);
+
+        for (const player of players) {
+            minimapWriter.setUint32(player.id ?? 0);
+            minimapWriter.setFloat32(Number(player.x) || 0);
+            minimapWriter.setFloat32(Number(player.y) || 0);
+        }
+
+        state.router.postMessage(minimapWriter.build());
+
+        if (globalThis._MAP_CELLS?.length) {
+            this.__sentTerrainScores ??= false;
+
+            if (!this.__sentTerrainScores) {
+                this.__sentTerrainScores = true;
+
+                const cells = globalThis._MAP_CELLS ?? [];
+
+                const terrainWriter = new Writer(true);
+
+                terrainWriter.setUint8(ROUTER_PACKET_TYPES.PIPE_PACKET);
+                terrainWriter.setUint16(this.id);
+                terrainWriter.setUint8(113);
+
+                terrainWriter.setUint32(cells.length);
+
+                for (const cell of cells) {
+                    terrainWriter.setUint16(cell.x);
+                    terrainWriter.setUint16(cell.y);
+                    terrainWriter.setFloat32(cell.score ?? 0);
+                }
+
+                state.router.postMessage(terrainWriter.build());
+            }
+        }
     }
 
     sendRoom() {

@@ -1,5 +1,4 @@
-export const SERVER_URL = location.protocol + "//" + ((location.hostname === "localhost" || location.hostname.startsWith("10.0.")) ? location.hostname + ":80" : "e2.server.eparker.dev");//"floof-router.glitch.me");
-
+export const SERVER_URL = process.env.ROUTING_SERVER;
 export function lerp(a, b, t) {
     return a + (b - a) * t;
 }
@@ -40,9 +39,11 @@ export const colors = {
     // RENDER COLORS
     white: "#FFFFFF",
     peach: "#FFF0B7",
+    sponge: "#FFD09F",
     cumWhite: "#ffffC9",
     black: "#000000",
     rosePink: "#FC93C5",
+    jellyPink: "#e3b8df",
     irisPurple: "#CD75DE",
     pollenGold: "#FEE86B",
     peaGreen: "#8CC05B",
@@ -75,37 +76,109 @@ export const colors = {
     ants: "#555555",
     fireAnt: "#a82a01",
     termite: "#d3a35b",
-    wasp: "#9f4627",
-    waspDark: "#34221c",
+    wasp: "#c8803c",
     jellyfish: "#EFEFEF",
     spider: "#4f412e",
     darkGreen: "#118240",
     beetlePurple: "#915db0",
     roach: "#9D4F23",
     roachHead: "#6C3419",
-    fireFlyLight: "#EFDECC",
     sand: "#E1C85D",
     jelly: "#D5B5D3",
     orange: "#F1BC48",
-    starfish: "#AA403F",
+    starfish: "#c74a48",
     book: "#c28043",
-    bookSpine: "#c28043",
     shrubGreen: "#0b7240",
     crabBodyOrange: "#dc704b",
     crabLimbBrown: "#4d2621",
-};
+    jelly: "#D5B5D3",
+    stickBrown: "#6A4923",
 
-export function formatLargeNumber(number) {
-    if (number < 1000) return number;
-    if (number < 1000000) return (number / 1000).toFixed(1) + "k";
-    if (number < 1000000000) return (number / 1000000).toFixed(1) + "m";
-    return (number / 1000000000).toFixed(1) + "b";
+    defaultGray: "#718083",
+    gardenGreen: "#1EA660",
+    desertYellow: "#ECDCB8",
+    oceanBlue: "#6D96BE",
+    antHellBrown: "#8E603F",
+    hellRed: "#973332",
+    sewersGreen: "#676733",
+    darkForestGreen: "#2C5037",
+    halloweenOrange: "#CF5704"
+};
+export function rgbToHex(r, g, b) {
+    return (
+        "#" +
+        [r, g, b]
+            .map(v => v.toString(16).padStart(2, "0"))
+            .join("")
+    );
+}
+export function hexToRGB(h) {
+    h = h.replace("#", "");
+
+    return {
+        r: parseInt(h.substring(0, 2), 16),
+        g: parseInt(h.substring(2, 4), 16),
+        b: parseInt(h.substring(4, 6), 16)
+    };
+}
+export function chatGradient(speed, type, c1 = "#000000", c2 = "#ffffff") {
+    const a = performance.now() * speed;
+    switch (type) {
+        case 0: {
+            const t = hexToRGB(c1);
+            const e = hexToRGB(c2);
+
+            const mix = (Math.sin(a) + 1) / 2;
+
+            const r = Math.round(t.r + (e.r - t.r) * mix);
+            const g = Math.round(t.g + (e.g - t.g) * mix);
+            const b = Math.round(t.b + (e.b - t.b) * mix);
+
+            return rgbToHex(r, g, b);
+        }
+        case 1: {
+            const hue = a % 360;
+            return `hsl(${hue}, 100%, 60%)`;
+        }
+        default:
+            return "#ffffff";
+    }
+}
+
+export function formatLargeNumber(number, type = 0) {
+    let returnedNumber = number;
+    if (type === 1) {
+        if (number >= 1e15) {
+            returnedNumber = (number / 1e15).toFixed(1) + "q";
+        } else if (number >= 1e12) {
+            returnedNumber = (number / 1e12).toFixed(2) + "t";
+        } else if (number >= 1e9) {
+            returnedNumber = (number / 1e9).toFixed(2) + "b";
+        } else if (number >= 1e6) {
+            returnedNumber = (number / 1e6).toFixed(2) + "m";
+        } else if (number >= 1e3) {
+            returnedNumber = (number / 1e3).toFixed(1) + "k";
+        }
+    } else {
+        if (number >= 1e15) {
+            returnedNumber = (number / 1e15).toFixed(2) + "q";
+        } else if (number >= 1e12) {
+            returnedNumber = (number / 1e12).toFixed(2) + "t";
+        } else if (number >= 1e9) {
+            returnedNumber = (number / 1e9).toFixed(2) + "b";
+        } else if (number >= 1e6) {
+            returnedNumber = (number / 1e6).toFixed(2) + "m";
+        } else if (number >= 1e3) {
+            returnedNumber = (number / 1e3).toFixed(2) + "k";
+        }
+    }
+    return returnedNumber;
 }
 
 const threshold = .6375;
 
 export function getDropRarity(mobRarity, highestPlayerRarity) {
-    const maxRarity = Math.min(9, Math.min(mobRarity, highestPlayerRarity + 1));
+    const maxRarity = Math.min(11, Math.min(mobRarity, highestPlayerRarity + 1));
     const minRarity = Math.max(0, maxRarity - 2);
 
     if (minRarity > maxRarity) {
@@ -122,6 +195,35 @@ export function getDropRarity(mobRarity, highestPlayerRarity) {
     }
 
     return rarity;
+}
+
+export function getWaveMobRarity(wave, scaling, raritiesLength) {
+    let progress = (wave % scaling) / scaling
+    let baseMobRarity = Math.floor(wave / scaling)
+    let mobRarity = baseMobRarity
+
+    if (Math.random() < progress) {
+        mobRarity++
+    }
+
+    if (Math.random() < .082) {
+        mobRarity++
+        if (Math.random() < .023) {
+            mobRarity++
+        }
+    }
+
+    if (Math.random() < .091) {
+        mobRarity--
+    }
+    if (Math.random() < .074) {
+        mobRarity--
+    }
+    if (Math.random() < .025) {
+        mobRarity--
+    }
+    
+    return Math.min(raritiesLength, Math.max(0, mobRarity));
 }
 
 export function testCaseDrops(mobRarity, highestPlayerRarity, count) {
@@ -158,7 +260,13 @@ export const options = {
     hideEntityUI: false,
     useTileBackground: false,
     fancyGraphics: false,
-    showHitboxes: false
+    showHitboxes: false,
+    showDamageNumbers: true,
+    cacheMobAssets: false,
+    cachePetalAssets: false,
+
+    disableGradients: true,
+    minimumGradientRarity: 6
 };
 
 export function applyArticle(word, capitalize = false) {
@@ -169,7 +277,34 @@ export function applyArticle(word, capitalize = false) {
     }
 }
 
-// Between Oct 31st and Nov 3rd
+export function applyPlural(word, capitalize = false) {
+    const rules = {
+        y: "ies",
+        h: "hes",
+        s: "ses",
+        x: "xes",
+        o: "oes"
+    };
+
+    for (const [ending, replacement] of Object.entries(rules)) {
+        if (word.endsWith(ending)) {
+            word = word.slice(0, -ending.length) + replacement;
+            break;
+        }
+    }
+
+    if (!Object.keys(rules).some(e => word.endsWith(rules[e]))) {
+        word += "s";
+    }
+
+    if (capitalize) {
+        word = word.charAt(0).toUpperCase() + word.slice(1);
+    }
+
+    return word;
+}
+
+// Between Oct 31st and Nov 7th
 export const isHalloween = (() => {
     const now = new Date();
     const month = now.getMonth() + 1;

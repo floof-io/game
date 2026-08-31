@@ -30,6 +30,94 @@ export const dragConfig = {
     onDrop: function() {}
 };
 
+export class DragAndDropInventoryItem {
+    index = 0;
+    rarity = 0;
+
+    x = 0;
+    y = 0;
+    size = 0;
+    ratio = 0;
+
+    realX = 0;
+    realY = 0;
+    realSize = 0;
+    stableSize = 0;
+}
+
+export const inventoryDragConfig = {
+    /**
+     * @type {DragAndDropInventoryItem}
+     */
+    item: null,
+    enabled: false,
+    isReleasing: false,
+    type: -1,
+    index: -1,
+    onDrop: function() {}
+};
+
+export function beginInventoryDragDrop(x, y, size, index, rarity) {
+    const item = new DragAndDropInventoryItem();
+
+    item.x = x;
+    item.y = y;
+    item.size = size;
+
+    item.realX = x;
+    item.realY = y;
+    item.realSize = size;
+    item.stableSize = size;
+
+    item.index = index;
+    item.rarity = rarity;
+
+    inventoryDragConfig.item = item;
+    inventoryDragConfig.enabled = true;
+    inventoryDragConfig.isReleasing = false;
+}
+
+export function updateAndDrawInventoryDragDrop(mouseX, mouseY) {
+    if (!inventoryDragConfig.enabled) {
+        inventoryDragConfig.item = null;
+        return;
+    }
+
+    if (!mouse.left || inventoryDragConfig.isReleasing) {
+        inventoryDragConfig.isReleasing = true;
+    } else {
+        inventoryDragConfig.item.realX = mouseX;
+        inventoryDragConfig.item.realY = mouseY;
+    }
+
+    inventoryDragConfig.item.x = lerp(inventoryDragConfig.item.x, inventoryDragConfig.item.realX, .2);
+    inventoryDragConfig.item.y = lerp(inventoryDragConfig.item.y, inventoryDragConfig.item.realY, .2);
+    inventoryDragConfig.item.size = lerp(inventoryDragConfig.item.size, inventoryDragConfig.item.realSize, .2);
+
+    if (inventoryDragConfig.isReleasing) {
+        const dx = inventoryDragConfig.item.x - inventoryDragConfig.item.realX;
+        const dy = inventoryDragConfig.item.y - inventoryDragConfig.item.realY;
+
+        if (Math.sqrt(dx * dx + dy * dy) < inventoryDragConfig.item.size) {
+            inventoryDragConfig.isReleasing = false;
+            inventoryDragConfig.enabled = false;
+            inventoryDragConfig.onDrop(inventoryDragConfig.item);
+            inventoryDragConfig.item = null;
+            return;
+        }
+    }
+
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.translate(inventoryDragConfig.item.x, inventoryDragConfig.item.y);
+    ctx.scale(inventoryDragConfig.item.size, inventoryDragConfig.item.size);
+    ctx.rotate(Math.sin(performance.now() / 250) * .3);
+    ctx.drawImage(getPetalIcon(inventoryDragConfig.item.index, inventoryDragConfig.item.rarity), -.5, -.5, 1, 1);
+    ctx.restore();
+
+    inventoryDragConfig.item.realSize = inventoryDragConfig.item.stableSize;
+}
+
 export const DRAG_TYPE_MAINDOCKER = 0;
 export const DRAG_TYPE_SECONDARYDOCKER = 1;
 export const DRAG_TYPE_DESTROY = 2;
